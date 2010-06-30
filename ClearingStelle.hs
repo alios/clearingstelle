@@ -1,0 +1,3 @@
+
+main = do return ()
+
