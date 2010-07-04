@@ -54,7 +54,7 @@ Executable clearingstelle
   Main-is: ClearingStelle.hs            
   
   -- Packages needed in order to build this package.
-  -- Build-depends:       
+  Build-depends: base, happstack-data >= 0.5	
   
   -- Modules not exported by this package.
   -- Other-modules:       
