@@ -4,7 +4,7 @@
 
 module ClearingStelle.Data where
 
-import Data.Word
+import Data.Char
 import Data.Time
 import Data.Generics
 import Data.Typeable
@@ -14,99 +14,118 @@ import Happstack.State
 
 import System.Random
 
-deriving instance Data Day
+import Test.QuickCheck
+
+newtype Tupel = Tupel String
+                deriving (Show, Read, Eq, Data, Typeable)
+                         
+    
+data InviteKey = InviteKey (Tupel, Tupel, Tupel, Tupel)
+               deriving (Show, Read, Eq, Data, Typeable)
+                        
+inviteKeyTupelLen = 5
+
+data RefKey = RefKey (Tupel, Tupel, Tupel, Tupel, Tupel)
+               deriving (Show, Read, Eq, Data, Typeable)
+
+refKeyTupelLen = 4
+
+type KeyPair = (InviteKey, RefKey)
 
 
-data TimeStampUTC = 
-  TimeStampUTC Day Rational   
-  deriving (Read, Show, Eq, Typeable, Data)
-                           
-instance Version TimeStampUTC
 
-$(deriveSerialize ''TimeStampUTC)
-
-
-
-timestamp2UtcTime :: TimeStampUTC -> UTCTime
-timestamp2UtcTime (TimeStampUTC day diff) = 
-  let diff' = conDiffTime diff
-  in UTCTime day diff'
-     
-utcTime2Timestamp :: UTCTime -> TimeStampUTC
-utcTime2Timestamp (UTCTime day diff) =
-  let diff' = toRational diff
-  in TimeStampUTC day diff'
-     
-conDiffTime :: Rational -> DiffTime  
-conDiffTime = fromRational
+-- | 'validChar' is a predicate for the allowed characters in the 'RefKEy' and
+--   in the 'InviteKey'.
+--   allowed are all lower case ASCII characters and digits exept all vocals and
+--   the following: '0', '1', 'l'
+validChar :: Char -> Bool
+validChar c =
+  (isAlphaNum c) && 
+  (isDigit c || isAsciiLower c) &&
+  (notElem c invalidChars) 
+    where invalidChars = "aeiou01l"
   
-data TokenT =
-  Token {
-    token :: Word64,
-    creation :: TimeStampUTC,
-    transmitted :: Maybe TimeStampUTC,
-    fetched :: Maybe TimeStampUTC
-    } deriving (Read, Show, Eq, Typeable, Data)
 
+validChars :: [Char]
+validChars = [ c | c <- map chr [0..255], validChar c]
 
-instance Version TokenT
-$(deriveSerialize ''TokenT)
-               
-
-
-data TokenPairT = 
-  TokenPair {
-    token_a :: TokenT,
-    token_b :: TokenT
-    } deriving (Read, Show, Eq, Typeable, Data)
-               
-instance Version TokenPairT 
+getRandomChar = do  
+  i <- getStdRandom (randomR (minBound, maxBound))
+  let char = validChars !! (i `mod` length validChars)
+  if (validChar char) 
+    then return char
+    else getRandomChar
          
-$(deriveSerialize ''TokenPairT)
+getRandomTupel :: Int -> IO Tupel
+getRandomTupel len = fmap Tupel $ getRandomTupel' len
+getRandomTupel' len
+  | (len < 0)  = fail $ "len must not be negative: " ++ show len
+  | (len == 0) = return []
+  | otherwise  = do
+    char <- getRandomChar
+    chars <- getRandomTupel' (len - 1)
+    return $ char : chars
 
-data AppState =
-  AppState {
-    stateTokenSets :: [[ TokenPairT ]]
-    } deriving (Read, Show, Eq, Typeable, Data)
-               
-instance Version AppState
-$(deriveSerialize ''AppState)
-
-instance Component AppState where
-  type Dependencies AppState = End
-  initialValue = AppState { stateTokenSets = [] }
+getRandomInviteKey :: IO InviteKey
+getRandomInviteKey = do
+  a <- getRandomTupel inviteKeyTupelLen
+  b <- getRandomTupel inviteKeyTupelLen
+  c <- getRandomTupel inviteKeyTupelLen
+  d <- getRandomTupel inviteKeyTupelLen
+  return $ InviteKey (a,b,c,d)
   
+getRandomRefKey :: IO RefKey
+getRandomRefKey = do
+  a <- getRandomTupel inviteKeyTupelLen
+  b <- getRandomTupel inviteKeyTupelLen
+  c <- getRandomTupel inviteKeyTupelLen
+  d <- getRandomTupel inviteKeyTupelLen
+  e <- getRandomTupel inviteKeyTupelLen  
+  return $ RefKey (a,b,c,d,e)
+
+getRandomKeyPair :: IO KeyPair
+getRandomKeyPair = do
+  i <- getRandomInviteKey
+  r <- getRandomRefKey
+  return $ (i,r)
+
+getRandomKeyPairs :: [KeyPair] -> Int -> IO [KeyPair]
+getRandomKeyPairs ps n
+  | (n < 0) = fail $ "n must not be negative: " ++ show n
+  | (n == 0) = return []
+  | otherwise = 
+    let is = map fst ps 
+        rs = map snd ps
+    in do 
+      p@(i, r) <- getRandomKeyPair
+      if ((elem i is) || (elem r rs))
+        then getRandomKeyPairs ps n
+        else do ps' <- getRandomKeyPairs (p:ps) (n - 1)
+                return $ p : ps'
+        
+
+prop_uniqueKeys :: [KeyPair] -> Bool
+prop_uniqueKeys [] = True
+prop_uniqueKeys ((i,r):ks) =
+  let is = map fst ks
+      rs = map snd ks
+  in  (notElem i is) && (notElem r rs) && prop_uniqueKeys ks
+
+-- | 'validTupel' is a predicate for a valid Tupel of a given length 'len'.
+--   it checks if the tupel has only valid characters
+validTupel :: Int -> Tupel -> Bool
+validTupel len (Tupel t) =
+  (length t == len) &&
+  (and $ map validChar t)
   
-getRandom' rs = do  
-  token <- getStdRandom (randomR (minBound, maxBound))
-  if (elem token rs) 
-    then getRandom' rs
-    else return token
+
+validInviteKey (InviteKey (a,b,c,d)) = 
+  validKey inviteKeyTupelLen [a,b,c,d]
+
+validRefKey (RefKey (a,b,c,d,e)) = 
+  validKey refKeyTupelLen [a,b,c,d,e]
+
+validKey len ts =
+  (length ts == len) &&
+  (and $ map (validTupel len) ts)
   
-genRandomToken :: [TokenT] -> IO TokenT
-genRandomToken ts = 
-  let ts' = map token ts
-  in do
-    token <- getRandom' ts'
-    ts <- fmap utcTime2Timestamp getCurrentTime
-    return $ Token token ts Nothing Nothing
-  
-genRandomTokenPair :: [TokenT] -> IO TokenPairT
-genRandomTokenPair ts = do
-  tokenA <- genRandomToken ts
-  tokenB <- genRandomToken $ tokenA : ts
-  return $ TokenPair tokenA tokenB
-
-
-
-genRandomTokenPairs :: Integer -> IO [TokenPairT]
-genRandomTokenPairs = genRandomTokenPairs' []
-
-genRandomTokenPairs' ts n
-      | (n <= 0)  = return []
-      | otherwise = do
-        t <- genRandomTokenPair ts
-        let tokenA = token_a t
-        let tokenB = token_b t
-        ts <- genRandomTokenPairs' (tokenA : tokenB :ts) (n - 1)
-        return $ t : ts
