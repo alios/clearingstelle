@@ -9,12 +9,56 @@ import Data.Time
 import Data.Generics
 import Data.Typeable
 
+import Control.Monad.State 
+
 import Happstack.Data
 import Happstack.State
 
 import System.Random
 
 import Test.QuickCheck
+
+
+
+data Role = Admin | Manager | InviteSite | RequestSite
+          deriving (Show, Read, Eq, Enum, Data, Typeable)
+instance Version Role
+$(deriveSerialize ''Role)
+
+
+data User = User {
+      user_email :: String,
+      user_pw :: String,
+      user_roles :: [ Role ]
+    } deriving (Show, Read, Eq, Data, Typeable)
+instance Version User
+$(deriveSerialize ''User)
+
+
+
+data ClearingStelleState = ClearingStelleState {
+      state_users :: [User]
+    } deriving (Show, Read, Eq, Data, Typeable)
+                         
+instance Version ClearingStelleState
+$(deriveSerialize ''ClearingStelleState)
+
+instance Component ClearingStelleState where
+    type Dependencies ClearingStelleState = End
+    initialValue = ClearingStelleState [User "admin" "wurst" [Admin]]
+
+
+addUser :: String -> String -> [ Role ] -> Update ClearingStelleState ()
+addUser u p rs = modify $ (\s -> ClearingStelleState $ add_user u p rs $ state_users s)
+         
+add_user u p rs users
+    | null u = fail "username must not be empty"
+    | null p = fail "password must not be empty"
+    | elem u $ [user_email u | u <- users] = fail $ "user " ++ u ++ " already exists"
+    | otherwise = (User u p rs) : users
+    
+          
+
 
 newtype Tupel = Tupel String
                 deriving (Show, Read, Eq, Data, Typeable)
