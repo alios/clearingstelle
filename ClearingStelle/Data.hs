@@ -2,14 +2,16 @@
 {-# OPTIONS -fglasgow-exts -XDeriveDataTypeable -XStandaloneDeriving #-}
 
 
-module ClearingStelle.Data where
+module ClearingStelle.Data(clearingStelleState, getUserMap) where
 
 import Data.Char
+import qualified Data.Map as M
 import Data.Time
-import Data.Generics
+import Data.Generics(Data)
 import Data.Typeable
 
 import Control.Monad.State 
+import Control.Monad.Reader
 
 import Happstack.Data
 import Happstack.State
@@ -19,6 +21,8 @@ import System.Random
 import Test.QuickCheck
 
 
+
+------------------------------ UserDB ------------------------------
 
 data Role = Admin | Manager | InviteSite | RequestSite
           deriving (Show, Read, Eq, Enum, Data, Typeable)
@@ -35,21 +39,26 @@ instance Version User
 $(deriveSerialize ''User)
 
 
-
-data ClearingStelleState = ClearingStelleState {
-      state_users :: [User]
+newtype UserDB = UserDB {
+      userdb_users :: [ User ]
     } deriving (Show, Read, Eq, Data, Typeable)
-                         
-instance Version ClearingStelleState
-$(deriveSerialize ''ClearingStelleState)
 
-instance Component ClearingStelleState where
-    type Dependencies ClearingStelleState = End
-    initialValue = ClearingStelleState [User "admin" "wurst" [Admin]]
+instance Version UserDB
+$(deriveSerialize ''UserDB)
 
+instance Component UserDB where
+    type Dependencies UserDB = End
+    initialValue = UserDB [ User "hans@wurst.de" "test" [Admin]]
 
-addUser :: String -> String -> [ Role ] -> Update ClearingStelleState ()
-addUser u p rs = modify $ (\s -> ClearingStelleState $ add_user u p rs $ state_users s)
+getUserMap :: Query UserDB (M.Map String String)
+getUserMap =
+    let getUserList userdb = M.fromList [ (user_email u, user_pw u) 
+                                     | u <- (userdb_users userdb)]
+    in do userdb <- ask
+          return $ getUserList userdb
+
+addUser :: String -> String -> [ Role ] -> Update UserDB ()
+addUser u p rs = modify $ (\db -> UserDB $ add_user u p rs $ userdb_users db)
          
 add_user u p rs users
     | null u = fail "username must not be empty"
@@ -57,8 +66,32 @@ add_user u p rs users
     | elem u $ [user_email u | u <- users] = fail $ "user " ++ u ++ " already exists"
     | otherwise = (User u p rs) : users
     
-          
 
+
+$(mkMethods ''UserDB ['getUserMap, 'addUser])
+
+------------------------------ AppState ------------------------------
+
+data AppState = AppState
+                deriving (Show, Read, Eq, Ord, Typeable, Data)
+                         
+instance Version AppState
+$(deriveSerialize ''AppState)
+
+
+instance Component AppState where
+    type Dependencies AppState = UserDB :+: End
+    initialValue = AppState
+
+$(mkMethods ''AppState [])
+
+clearingStelleState :: Proxy AppState
+clearingStelleState = Proxy
+
+
+------------------------------ Tupels and Keys ------------------------------
+
+          
 
 newtype Tupel = Tupel String
                 deriving (Show, Read, Eq, Data, Typeable)
@@ -103,7 +136,7 @@ getRandomChar = do
 getRandomTupel :: Int -> IO Tupel
 getRandomTupel len = fmap Tupel $ getRandomTupel' len
 getRandomTupel' len
-  | (len < 0)  = fail $ "len must not be negative: " ++ show len
+  | (len < 0)  = error $ "len must not be negative: " ++ show len
   | (len == 0) = return []
   | otherwise  = do
     char <- getRandomChar

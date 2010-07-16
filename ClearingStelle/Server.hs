@@ -4,14 +4,20 @@
 
 module ClearingStelle.Server where
 
+import System.Environment
+import System.Exit
+import System.Console.GetOpt
+    
 import Control.Monad
 import Happstack.Server
-
+import Happstack.Server.SimpleHTTP
+import ClearingStelle.Data
+import Happstack.State
 
 server_part :: ServerPartT IO Response
 server_part = 
     msum [ dir "admin" admin_part
-         , dir "auth" $ methodSP POST $ admin_auth
+         , dir "auth" $ methodSP POST $ auth
          ]
 
 admin_part = 
@@ -20,17 +26,16 @@ admin_part =
 
 
 
-
 admin_adduser = 
     undefined
 
-admin_auth =
-    undefined
-
-
+auth = 
+    do usermap <- undefined-- query getUserMap
+       basicAuth "please authorize yourself" usermap $ return $ toResponse "authorized"
 
 clearingstelle =
     let conf = nullConf
-    in simpleHTTP conf server_part 
+    in do txCtrl <- startSystemState clearingStelleState 
+          simpleHTTP conf server_part 
+          waitForTermination
 
-main = clearingstelle
