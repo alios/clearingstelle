@@ -1,5 +1,7 @@
+module Main where
+
 import ClearingStelle.Data
 import ClearingStelle.Server
 
-main = do return ()
+main = clearingstelle
 

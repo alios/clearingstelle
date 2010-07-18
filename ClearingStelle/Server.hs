@@ -2,40 +2,36 @@
 {-# OPTIONS -fglasgow-exts #-}
 
 
-module ClearingStelle.Server where
+module ClearingStelle.Server(clearingstelle) where
 
 import System.Environment
 import System.Exit
 import System.Console.GetOpt
     
 import Control.Monad
+import Control.Concurrent
 import Happstack.Server
 import Happstack.Server.SimpleHTTP
-import ClearingStelle.Data
 import Happstack.State
 
-server_part :: ServerPartT IO Response
+import ClearingStelle.Data
+
+server_part :: ServerPart Response
 server_part = 
-    msum [ dir "admin" admin_part
-         , dir "auth" $ methodSP POST $ auth
+    msum [ dir "admin" $ admin_part
          ]
 
 admin_part = 
-    msum  [ dir "adduser" $  methodSP POST $ admin_adduser
+    msum  [ dir "adduser" $ methodSP POST $ roleAuth adminRole $ admin_adduser
           ]
-
-
 
 admin_adduser = 
     undefined
 
-auth = 
-    do usermap <- undefined-- query getUserMap
-       basicAuth "please authorize yourself" usermap $ return $ toResponse "authorized"
-
 clearingstelle =
     let conf = nullConf
     in do txCtrl <- startSystemState clearingStelleState 
-          simpleHTTP conf server_part 
+          tid <- forkIO $ simpleHTTP conf server_part 
           waitForTermination
-
+          killThread tid
+          shutdownSystem txCtrl

@@ -1,8 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
-{-# OPTIONS -fglasgow-exts -XDeriveDataTypeable -XStandaloneDeriving #-}
+{-# OPTIONS -fglasgow-exts -XNoMonomorphismRestriction #-}
 
 
-module ClearingStelle.Data(clearingStelleState, getUserMap) where
+module ClearingStelle.Data(clearingStelleState, getUserMap, addUser
+                          ,roleAuth, UserDB, adminRole, managerRole, inviteSiteRole, requestSiteRole
+) where
 
 import Data.Char
 import qualified Data.Map as M
@@ -15,6 +17,8 @@ import Control.Monad.Reader
 
 import Happstack.Data
 import Happstack.State
+import Happstack.Server.SimpleHTTP
+
 
 import System.Random
 
@@ -28,6 +32,12 @@ data Role = Admin | Manager | InviteSite | RequestSite
           deriving (Show, Read, Eq, Enum, Data, Typeable)
 instance Version Role
 $(deriveSerialize ''Role)
+
+adminRole = Admin
+managerRole = Manager
+inviteSiteRole = InviteSite
+requestSiteRole = RequestSite
+
 
 
 data User = User {
@@ -50,25 +60,32 @@ instance Component UserDB where
     type Dependencies UserDB = End
     initialValue = UserDB [ User "hans@wurst.de" "test" [Admin]]
 
-getUserMap :: Query UserDB (M.Map String String)
-getUserMap =
-    let getUserList userdb = M.fromList [ (user_email u, user_pw u) 
-                                     | u <- (userdb_users userdb)]
-    in do userdb <- ask
-          return $ getUserList userdb
+
+getUserMap :: Role -> Query UserDB (M.Map String String)
+getUserMap r =
+    do userdb <- fmap userdb_users ask
+       let us = filter (\u -> r `elem` (user_roles u)) userdb
+       return $ M.fromList [ (user_email u, user_pw u) | u <- us ]
+
 
 addUser :: String -> String -> [ Role ] -> Update UserDB ()
 addUser u p rs = modify $ (\db -> UserDB $ add_user u p rs $ userdb_users db)
-         
-add_user u p rs users
-    | null u = fail "username must not be empty"
-    | null p = fail "password must not be empty"
-    | elem u $ [user_email u | u <- users] = fail $ "user " ++ u ++ " already exists"
-    | otherwise = (User u p rs) : users
+    where add_user u p rs users 
+              | null u = fail "username must not be empty"
+              | null p = fail "password must not be empty"
+              | elem u $ [user_email u | u <- users] = fail $ "user " ++ u ++ " already exists"
+              | otherwise = (User u p rs) : users
     
 
-
 $(mkMethods ''UserDB ['getUserMap, 'addUser])
+
+roleAuth :: Role -> ServerPart Response -> ServerPart Response
+roleAuth r p =
+    do usermap <- query $ GetUserMap r
+       basicAuth "please authorize yourself" usermap p
+
+
+
 
 ------------------------------ AppState ------------------------------
 
