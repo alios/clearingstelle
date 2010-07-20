@@ -2,11 +2,9 @@
 {-# OPTIONS -fglasgow-exts -XNoMonomorphismRestriction #-}
 
 module ClearingStelle.UserDB
-    (adminRole, managerRole, inviteSiteRole, requestSiteRole
-    ,UserDB, roleAuth
+    (Role(..), UserDB, roleAuth
     ,admin_adduser_get, admin_adduser_post) where
 
-import Data.Char
 import Data.Maybe
 import qualified Data.Map as M
 import Data.Generics(Data)
@@ -22,30 +20,7 @@ import Happstack.Server.SimpleHTTP
 
 import System.Log.Logger
 
-trim :: String -> String
-trim = f . f
-    where f = reverse . dropWhile isSpace
-
-
-page :: String -> Html -> Html
-page t c = 
-    let headers = [thetitle << t
-                  ]
-        hdr = header << foldl (+++) noHtml headers
-        bdy = body << ((h1 << t) +++ c)
-    in hdr +++ bdy 
-       
-
-
-build_form :: String -> URL -> [(String, [(String, Html)])] -> Html
-build_form lbl action fss =
-    let fss' = [ fieldset << ((legend $ toHtml l) +++ build_fieldset fs)  | (l,fs) <- fss ] 
-        build_fieldset fs = 
-            foldl (+++) noHtml 
-                      [((label $ toHtml n) ! [thefor n]) +++ (e ! [name n, identifier n] +++ br)| (n,e) <- fs]
-        form' = form ! [XHTML.method "post", XHTML.action action]
-    in ((h2 << lbl) +++ br +++ form' << ((foldl (+++) noHtml fss') +++ (submit "Save" "Save")))
-
+import ClearingStelle.Utils
 
 admin_adduser_page :: Html
 admin_adduser_page =
@@ -63,13 +38,6 @@ data Role = Admin | Manager | InviteSite | RequestSite
           deriving (Show, Read, Eq, Enum, Data, Typeable)
 instance Version Role
 $(deriveSerialize ''Role)
-
-adminRole = Admin
-managerRole = Manager
-inviteSiteRole = InviteSite
-requestSiteRole = RequestSite
-
-
 
 data User = User {
       user_email :: String,
@@ -126,8 +94,6 @@ addUser u
 $(mkMethods ''UserDB ['getUserMap, 'addUser])
 
 
-
-
 admin_adduser_get = 
     ok $ toResponse $ admin_adduser_page
 
@@ -139,8 +105,6 @@ admin_adduser_post = do
          update $ AddUser u'
          ok $ toResponse $ page "User created" << h2 << ("user " ++ user_email u' ++ " created.") else 
       badRequest $ toResponse $  "invalid/insufficient POST data" 
-
-
 
 roleAuth :: Role -> ServerPart Response -> ServerPart Response
 roleAuth r p =

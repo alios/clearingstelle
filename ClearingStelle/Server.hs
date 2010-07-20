@@ -22,7 +22,7 @@ server_part =
          ]
 
 admin_part = 
-    roleAuth adminRole $
+    roleAuth Admin $
              msum  [ dir "adduser" $ methodSP POST $ admin_adduser_post
                    , dir "adduser" $ methodSP GET  $ admin_adduser_get
                    ]
