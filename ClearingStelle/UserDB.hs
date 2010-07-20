@@ -6,6 +6,8 @@ module ClearingStelle.UserDB
     ,UserDB, roleAuth
     ,admin_adduser_get, admin_adduser_post) where
 
+import Data.Char
+import Data.Maybe
 import qualified Data.Map as M
 import Data.Generics(Data)
 import Data.Typeable
@@ -18,6 +20,11 @@ import Happstack.Data
 import Happstack.State
 import Happstack.Server.SimpleHTTP
 
+import System.Log.Logger
+
+trim :: String -> String
+trim = f . f
+    where f = reverse . dropWhile isSpace
 
 
 page :: String -> Html -> Html
@@ -52,15 +59,6 @@ admin_adduser_page =
             ]
     in page "Add User" f
 
-
-admin_adduser_get = 
-    ok $ toResponse $ admin_adduser_page
-
-
-admin_adduser_post = undefined
-
-
-
 data Role = Admin | Manager | InviteSite | RequestSite
           deriving (Show, Read, Eq, Enum, Data, Typeable)
 instance Version Role
@@ -73,7 +71,6 @@ requestSiteRole = RequestSite
 
 
 
-
 data User = User {
       user_email :: String,
       user_pw :: String,
@@ -81,6 +78,19 @@ data User = User {
     } deriving (Show, Read, Eq, Data, Typeable)
 instance Version User
 $(deriveSerialize ''User)
+
+instance FromData User where
+    fromData = do
+      ps <- fmap M.fromList lookPairs
+      email         <- fmap trim $ look "Email"
+      password      <- fmap trim $ look "Password"
+      let roles' = [(Admin, inRole "isAdmin")
+                   ,(Manager, inRole "isManager")
+                   ,(InviteSite, inRole "isInviteSite")
+                   ,(RequestSite, inRole "isRequestSite")]
+          roles  = [r | (r, e) <- roles', e]
+          inRole s = s `M.member` ps
+      return $ User email password roles
 
 
 newtype UserDB = UserDB {
@@ -95,6 +105,7 @@ instance Component UserDB where
     initialValue = UserDB [ User "alios" "test" [Admin]]
 
 
+
 getUserMap :: Role -> Query UserDB (M.Map String String)
 getUserMap r =
     do userdb <- fmap userdb_users ask
@@ -102,16 +113,34 @@ getUserMap r =
        return $ M.fromList [ (user_email u, user_pw u) | u <- us ]
 
 
-addUser :: String -> String -> [ Role ] -> Update UserDB ()
-addUser u p rs = modify $ (\db -> UserDB $ add_user u p rs $ userdb_users db)
-    where add_user u p rs users 
-              | null u = fail "username must not be empty"
-              | null p = fail "password must not be empty"
-              | elem u $ [user_email u | u <- users] = fail $ "user " ++ u ++ " already exists"
-              | otherwise = (User u p rs) : users
-    
+addUser :: User -> Update UserDB ()
+addUser u 
+    | null $ user_email u = fail "username must not be empty"
+    | null $ user_pw u = fail "password must not be empty"
+    | otherwise = 
+        do us <- fmap userdb_users getState
+           if (elem (user_email u) $ [user_email u | u <- us]) then 
+               fail $ "user " ++ (user_email u) ++ " already exists" else
+               putState $ UserDB (u:us)
 
 $(mkMethods ''UserDB ['getUserMap, 'addUser])
+
+
+
+
+admin_adduser_get = 
+    ok $ toResponse $ admin_adduser_page
+
+
+admin_adduser_post = do
+  u <- getData
+  if (isJust u) then 
+      do let u' = fromJust u
+         update $ AddUser u'
+         ok $ toResponse $ page "User created" << h2 << ("user " ++ user_email u' ++ " created.") else 
+      badRequest $ toResponse $  "invalid/insufficient POST data" 
+
+
 
 roleAuth :: Role -> ServerPart Response -> ServerPart Response
 roleAuth r p =
