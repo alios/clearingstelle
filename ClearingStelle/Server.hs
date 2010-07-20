@@ -22,14 +22,13 @@ server_part =
          ]
 
 admin_part = 
-    msum  [ dir "adduser" $ methodSP POST $ roleAuth adminRole $ admin_adduser
-          ]
-
-admin_adduser = 
-    undefined
+    roleAuth adminRole $
+             msum  [ dir "adduser" $ methodSP POST $ admin_adduser_post
+                   , dir "adduser" $ methodSP GET  $ admin_adduser_get
+                   ]
 
 clearingstelle =
-    let conf = nullConf
+    let conf = nullConf -- validateConf -- nullConf
     in do txCtrl <- startSystemState clearingStelleState 
           tid <- forkIO $ simpleHTTP conf server_part 
           waitForTermination
