@@ -4,29 +4,45 @@
 
 module ClearingStelle.Keys () where
 
-
 import System.Random
 import Data.Generics(Data)
 import Data.Typeable
 import Data.Char        
+import Data.Time
+
+import Happstack.Data
 
 import ClearingStelle.Utils
 
+
+
 newtype Tupel = Tupel String
                 deriving (Show, Read, Eq, Data, Typeable)
-                         
+instance Version Tupel  
+$(deriveSerialize ''Tupel)
+
 data InviteKey = InviteKey (Tupel, Tupel, Tupel, Tupel)
                deriving (Show, Read, Eq, Data, Typeable)
+instance Version InviteKey
+$(deriveSerialize ''InviteKey)
                         
 inviteKeyTupelLen = 5
 
 data RefKey = RefKey (Tupel, Tupel, Tupel, Tupel, Tupel)
                deriving (Show, Read, Eq, Data, Typeable)
+instance Version RefKey
+$(deriveSerialize ''RefKey)
+
 
 refKeyTupelLen = 4
 
-type KeyPair = (InviteKey, RefKey)
-
+data KeyPair = KeyPair {
+      kp_inviteKey :: InviteKey,
+      kp_refKey :: RefKey,
+      kp_created :: UTCTime
+} deriving (Show, Read, Data, Typeable)
+instance Version KeyPair
+$(deriveSerialize ''KeyPair)
 
 
 -- | 'validChar' is a predicate for the allowed characters in the 'RefKEy' and
@@ -82,17 +98,20 @@ getRandomKeyPair :: IO KeyPair
 getRandomKeyPair = do
   i <- getRandomInviteKey
   r <- getRandomRefKey
-  return $ (i,r)
+  cd <- getCurrentTime
+  return $ KeyPair i r cd
 
 getRandomKeyPairs :: [KeyPair] -> Int -> IO [KeyPair]
 getRandomKeyPairs ps n
   | (n < 0) = fail $ "n must not be negative: " ++ show n
   | (n == 0) = return []
   | otherwise = 
-    let is = map fst ps 
-        rs = map snd ps
+    let is = map kp_inviteKey ps 
+        rs = map kp_refKey ps
     in do 
-      p@(i, r) <- getRandomKeyPair
+      p <- getRandomKeyPair
+      let i = kp_inviteKey p
+          r = kp_refKey p
       if ((elem i is) || (elem r rs))
         then getRandomKeyPairs ps n
         else do ps' <- getRandomKeyPairs (p:ps) (n - 1)
@@ -101,9 +120,11 @@ getRandomKeyPairs ps n
 
 prop_uniqueKeys :: [KeyPair] -> Bool
 prop_uniqueKeys [] = True
-prop_uniqueKeys ((i,r):ks) =
-  let is = map fst ks
-      rs = map snd ks
+prop_uniqueKeys (k:ks) =
+  let is = map kp_inviteKey ks
+      rs = map kp_refKey ks
+      i = kp_inviteKey k
+      r = kp_refKey k
   in  (notElem i is) && (notElem r rs) && prop_uniqueKeys ks
 
 -- | 'validTupel' is a predicate for a valid Tupel of a given length 'len'.
