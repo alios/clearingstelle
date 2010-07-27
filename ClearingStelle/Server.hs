@@ -19,13 +19,22 @@ import ClearingStelle.Data
 server_part :: ServerPart Response
 server_part = 
     msum [ dir "admin" $ admin_part
+         , dir "manager" $ manager_part
          ]
 
 admin_part = 
-    roleAuth Admin $
-             msum  [ dir "adduser" $ methodSP POST $ admin_adduser_post
-                   , dir "adduser" $ methodSP GET  $ admin_adduser_get
-                   ]
+    roleAuth Admin $ dir "adduser" $ 
+             msum [ methodSP GET  $ admin_adduser_get
+                  , methodSP POST $ admin_adduser_post
+                  ]
+                  
+
+manager_part = 
+    roleAuth Manager $ dir "createkeyset" $ 
+             msum [ methodSP GET $ manager_createkeyset_get
+                  , methodSP POST $ manager_createkeyset_post
+                  ]
+
 
 clearingstelle =
     let conf = nullConf -- validateConf -- nullConf

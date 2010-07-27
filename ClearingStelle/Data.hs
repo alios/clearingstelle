@@ -24,7 +24,7 @@ $(deriveSerialize ''AppState)
 
 
 instance Component AppState where
-    type Dependencies AppState = UserDB :+: End
+    type Dependencies AppState = UserDB :+: KeyStore :+: End
     initialValue = AppState
 
 $(mkMethods ''AppState [])

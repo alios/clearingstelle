@@ -2,7 +2,7 @@
 {-# OPTIONS -fglasgow-exts -XNoMonomorphismRestriction #-}
 
 module ClearingStelle.UserDB
-    (Role(..), UserDB, roleAuth
+    (Role(..), UserDB, User(..), roleAuth, IsUserInRole, ValidRoles(..)
     ,admin_adduser_get, admin_adduser_post) where
 
 import Data.Maybe
@@ -70,8 +70,15 @@ $(deriveSerialize ''UserDB)
 
 instance Component UserDB where
     type Dependencies UserDB = End
-    initialValue = UserDB [ User "alios" "test" [Admin]]
+    initialValue = UserDB [ User "admin" "admin" [Admin]]
 
+
+isUserInRole :: Role -> String -> Query UserDB Bool
+isUserInRole r u = fmap (M.member u) $ getUserMap r
+
+validRoles :: String -> String -> Query UserDB Bool
+validRoles inv req = 
+    fmap and $ sequence [ isUserInRole InviteSite inv, isUserInRole RequestSite req ]
 
 
 getUserMap :: Role -> Query UserDB (M.Map String String)
@@ -91,7 +98,7 @@ addUser u
                fail $ "user " ++ (user_email u) ++ " already exists" else
                putState $ UserDB (u:us)
 
-$(mkMethods ''UserDB ['getUserMap, 'addUser])
+$(mkMethods ''UserDB ['getUserMap, 'addUser, 'isUserInRole, 'validRoles])
 
 
 admin_adduser_get = 

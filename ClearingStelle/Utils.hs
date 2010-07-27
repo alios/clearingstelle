@@ -32,19 +32,8 @@ build_form lbl action fss =
             foldl (+++) noHtml 
                       [((label $ toHtml n) ! [thefor n]) +++ (e ! [name n, identifier n] +++ br)| (n,e) <- fs]
         form' = form ! [XHTML.method "post", XHTML.action action]
-    in ((h2 << lbl) +++ br +++ form' << ((foldl (+++) noHtml fss') +++ (submit "Save" "Save")))
+    in ((h2 << lbl) +++ br +++ form' << ((foldl (+++) noHtml fss') +++ (submit "Done" "Done")))
 
 
-instance Version Day
-$(deriveSerialize ''Day)
 
-instance Version UTCTime
-instance Serialize UTCTime where
-    getCopy =
-        contain $ do day <- safeGet
-                     dayTime <- fmap fromRational safeGet
-                     return $ UTCTime day dayTime
-    putCopy t = 
-        contain $ do safePut $ utctDay t
-                     safePut $ toRational $ utctDayTime t
     
