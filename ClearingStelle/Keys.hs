@@ -64,6 +64,8 @@ data KeySet = KeySet {
       ks_manager :: User,
       ks_inviteSite :: User,
       ks_requestSite :: User,
+      ks_notifyInviteSite :: Bool,
+      ks_notifyRequestSite :: Bool,
       ks_disabled :: Bool
 } deriving (Show, Read, Data, Typeable)
 instance Version KeySet
@@ -199,14 +201,14 @@ insertKeySet ks =
            putState $ KeyStore (ks:kss) else 
            fail $ "KeySet with name " ++ ks_name ks ++ " already exists in KeyStore." 
      
-createKeySet :: String -> User -> User -> User -> Int -> Update KeyStore ()
-createKeySet name m inv req n =
+createKeySet :: String -> User -> User -> User -> Int -> Bool -> Bool -> Update KeyStore ()
+createKeySet name m inv req n notifyi notifyr  =
     do valid <- unsafeIOToEv $ query $ ValidRoles (user_email inv) (user_email req)
        if (valid) then 
            do kps' <- getAllKeyPairs
               kps <- unsafeIOToEv $ getRandomKeyPairs kps' n
               time <- unsafeIOToEv $ getCurrentTime
-              insertKeySet $ KeySet name kps time m inv req False else
+              insertKeySet $ KeySet name kps time m inv req notifyi notifyr False else
            fail $ show inv ++ " or " ++ " don't have the valid roles."
 
 $(mkMethods ''KeyStore ['getAllKeyPairs, 'insertKeySet, 'createKeySet])
@@ -218,12 +220,9 @@ manager_createkeyset_post = do
       do let (name, count, inv, ref) = fromJust d'
          ok $ toResponse $ "created" else
       
-      badRequest $ toResponse $ "invalid/insufficient POST data"
+      badRequest $ toResponse $ 
         
 
-type CreateKeySetData = (String, String, String, Int)
-instance FromData CreateKeySetData where
-    fromData = do
       name <- fmap trim $ look "Name"
       ref <- fmap trim $ look "RefKey Site"
       inv <- fmap trim $ look "InviteKey Site"
@@ -231,10 +230,33 @@ instance FromData CreateKeySetData where
       return (name, ref, inv, count)
 -}
 
-manager_createkeyset_post = undefined
+manager_createkeyset_post = do
+  user <- fmap fromJust getCurrentUser
+  postdata <- getData
+  case postdata of 
+    Nothing -> badRequest $ toResponse $ "invalid/insufficient POST data"
+    Just (name, inv, ref, n, notifyi, notifyr) -> 
+        do inv' <- fmap fromJust $ query $ GetUser inv
+           ref' <- fmap fromJust $ query $ GetUser ref
+           update $ CreateKeySet name user inv' ref' n notifyi notifyr
+           ok $ toResponse $ "created keyset"
 
 manager_createkeyset_get = 
     ok $ toResponse $ manager_createkeyset_page
+    
+
+type CreateKeySetData = (String, String, String, Int, Bool, Bool)
+instance FromData CreateKeySetData where
+    fromData = do
+      req <- fmap (map (\(k,v) -> (k, trim v))) $ lookPairs
+      let name = fromJust $ lookup "Name" req
+          inv  = fromJust $ lookup "InviteKey Site" req
+          ref  = fromJust $ lookup "RefKey Site" req
+          n    = read $ fromJust $ lookup "Count" req 
+          notifyi = isJust $ lookup "Notify InviteKey Site" req
+          notifyr = isJust $ lookup "Notify RefKey Site" req
+      return $ (name, inv, ref, n, notifyi, notifyr)
+       
 
 manager_createkeyset_page :: Html
 manager_createkeyset_page =
@@ -243,7 +265,10 @@ manager_createkeyset_page =
                           ,("RefKey Site", textfield "")
                           ,("InviteKey Site", textfield "") 
                           ])
-            , ("Options", [("Count", textfield "0")])
+            , ("Options", [("Count", textfield "0")
+                          ,("Notify InviteKey Site", checkbox "notifyi" "notifyi")
+                          ,("Notify RefKey Site", checkbox "notifyr" "notifyr")
+                          ])
             ]
     in page "Create Keyset" f
 
