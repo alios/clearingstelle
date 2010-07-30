@@ -36,10 +36,12 @@ manager_part =
                   ]
 
 
+
 clearingstelle =
     let conf = nullConf -- validateConf -- nullConf
     in do txCtrl <- startSystemState clearingStelleState 
           tid <- forkIO $ simpleHTTP conf server_part 
           waitForTermination
+          createCheckpoint txCtrl
           killThread tid
           shutdownSystem txCtrl

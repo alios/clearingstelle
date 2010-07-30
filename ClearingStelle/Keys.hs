@@ -24,6 +24,7 @@ import Happstack.Server.SimpleHTTP
 import ClearingStelle.UserDB
 import ClearingStelle.Utils
 
+import Debug.Trace
 
 newtype Tupel = Tupel String
                 deriving (Show, Read, Eq, Data, Typeable)
@@ -101,10 +102,7 @@ validChars = [ c | c <- map chr [0..255], validChar c]
 
 getRandomChar = do  
   i <- getStdRandom (randomR (minBound, maxBound))
-  let char = validChars !! (i `mod` length validChars)
-  if (validChar char) 
-    then return char
-    else getRandomChar
+  return $ validChars !! (i `mod` length validChars)
          
 getRandomTupel :: Int -> IO Tupel
 getRandomTupel len = fmap Tupel $ getRandomTupel' len
@@ -203,71 +201,64 @@ insertKeySet ks =
      
 createKeySet :: String -> User -> User -> User -> Int -> Bool -> Bool -> Update KeyStore ()
 createKeySet name m inv req n notifyi notifyr  =
-    do valid <- unsafeIOToEv $ query $ ValidRoles (user_email inv) (user_email req)
-       if (valid) then 
-           do kps' <- getAllKeyPairs
-              kps <- unsafeIOToEv $ getRandomKeyPairs kps' n
-              time <- unsafeIOToEv $ getCurrentTime
-              insertKeySet $ KeySet name kps time m inv req notifyi notifyr False else
-           fail $ show inv ++ " or " ++ " don't have the valid roles."
+    do kps' <- getAllKeyPairs
+       kps <- unsafeIOToEv $ getRandomKeyPairs kps' n
+       time <- unsafeIOToEv $ getCurrentTime
+       insertKeySet $ KeySet name kps time m inv req notifyi notifyr False
 
 $(mkMethods ''KeyStore ['getAllKeyPairs, 'insertKeySet, 'createKeySet])
 
-{-
-manager_createkeyset_post = do
-  d' <- getData
-  if (isJust d') then
-      do let (name, count, inv, ref) = fromJust d'
-         ok $ toResponse $ "created" else
-      
-      badRequest $ toResponse $ 
-        
+traceTrue x = trace (show x ++ "nn") True 
+traceIt x = trace (show x ++ "nn") x 
+traceMsg msg x = trace ( "nn" ++ msg ++ (show x) ++ "nn") x
 
-      name <- fmap trim $ look "Name"
-      ref <- fmap trim $ look "RefKey Site"
-      inv <- fmap trim $ look "InviteKey Site"
-      count <- fmap read $ look "Count"
-      return (name, ref, inv, count)
--}
-
+manager_createkeyset_post :: ServerPart Response
 manager_createkeyset_post = do
   user <- fmap fromJust getCurrentUser
-  postdata <- getData
+  postdata <- getDataFn manager_createkeyset_data
+
   case postdata of 
     Nothing -> badRequest $ toResponse $ "invalid/insufficient POST data"
     Just (name, inv, ref, n, notifyi, notifyr) -> 
-        do inv' <- fmap fromJust $ query $ GetUser inv
-           ref' <- fmap fromJust $ query $ GetUser ref
-           update $ CreateKeySet name user inv' ref' n notifyi notifyr
-           ok $ toResponse $ "created keyset"
+        do iuser <- query $ GetUser inv
+           ruser <- query $ GetUser ref
+           inv'  <- case iuser of
+                     Nothing -> fail $ "unkown invite site:"
+                     Just i -> return i
+           ref'  <- case ruser of
+                      Nothing -> fail $ "unknown ref site:" ++ ref
+                      Just r -> return r
+           valid <- query $ ValidRoles (user_email inv') (user_email ref')        
+           if (valid) then do    
+                        update $ CreateKeySet name user inv' ref' n notifyi notifyr
+                        ok $ toResponse $ "created keyset" else 
+               fail $ show inv ++ " or " ++ " don't have the valid roles."
 
 manager_createkeyset_get = 
     ok $ toResponse $ manager_createkeyset_page
     
-
-type CreateKeySetData = (String, String, String, Int, Bool, Bool)
-instance FromData CreateKeySetData where
-    fromData = do
-      req <- fmap (map (\(k,v) -> (k, trim v))) $ lookPairs
-      let name = fromJust $ lookup "Name" req
-          inv  = fromJust $ lookup "InviteKey Site" req
-          ref  = fromJust $ lookup "RefKey Site" req
-          n    = read $ fromJust $ lookup "Count" req 
-          notifyi = isJust $ lookup "Notify InviteKey Site" req
-          notifyr = isJust $ lookup "Notify RefKey Site" req
-      return $ (name, inv, ref, n, notifyi, notifyr)
+manager_createkeyset_data :: RqData (String, String, String, Int, Bool, Bool)
+manager_createkeyset_data = do
+  req  <- lookPairs
+  name <- fmap trim $ look "Name"
+  inv  <- fmap trim $ look "InviteKeySite"
+  ref  <- fmap trim $ look "RefKeySite"
+  n    <- lookRead "Count" 
+  let notifyi = isJust $ lookup "InviteKeyNotify" req
+      notifyr = isJust $ lookup "RefKeyNotify" req
+  return $ (name, inv, ref, n, notifyi, notifyr)
        
 
 manager_createkeyset_page :: Html
 manager_createkeyset_page =
     let f = build_form "Create Keyset" "/manager/createkeyset"
-            [ ("Parties", [("Name", textfield "")
-                          ,("RefKey Site", textfield "")
-                          ,("InviteKey Site", textfield "") 
+            [ ("Parameters", [("Name", textfield "")
+                          ,("InviteKeySite", textfield "") 
+                          ,("RefKeySite", textfield "")
                           ])
-            , ("Options", [("Count", textfield "0")
-                          ,("Notify InviteKey Site", checkbox "notifyi" "notifyi")
-                          ,("Notify RefKey Site", checkbox "notifyr" "notifyr")
+            , ("Options", [("Count", textfield "")
+                          ,("InviteKeyNotify", checkbox "notifyi" "notifyi")
+                          ,("RefKeyNotify", checkbox "notifyr" "notifyr")
                           ])
             ]
     in page "Create Keyset" f

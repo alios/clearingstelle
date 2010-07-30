@@ -2,7 +2,7 @@
 {-# OPTIONS -fglasgow-exts -XNoMonomorphismRestriction #-}
 
 module ClearingStelle.UserDB
-    (Role(..), UserDB, User(..), roleAuth, IsUserInRole, ValidRoles(..), GetUser(..), getCurrentUser
+    (Role(..), UserDB, User(..), roleAuth, IsUserInRole, validRoles, ValidRoles(..), GetUser(..), getCurrentUser
     ,admin_adduser_get, admin_adduser_post) where
 
 import Data.Maybe
@@ -71,7 +71,7 @@ $(deriveSerialize ''UserDB)
 
 instance Component UserDB where
     type Dependencies UserDB = End
-    initialValue = UserDB [ User "admin" "admin" [Admin]]
+    initialValue = UserDB [ User "test" "test" [Admin, Manager, InviteSite, RequestSite]]
 
 
 isUserInRole :: Role -> String -> Query UserDB Bool
