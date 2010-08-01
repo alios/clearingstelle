@@ -132,7 +132,6 @@ refKeyParser =
        t5 <- refTupel
        return $ RefKey (Tupel t1, Tupel t2, Tupel t3, Tupel t4, Tupel t5)
 
-
 getRandomChar = do  
   i <- getStdRandom (randomR (minBound, maxBound))
   return $ validChars !! (i `mod` length validChars)
@@ -239,7 +238,7 @@ getKeySet n = do
     []  -> return Nothing
     [s] -> return $ Just s
     otherwise -> error $ "found duplicate keysets with name: " ++ n
-  
+
 getKeyPairsFromSet :: String -> Query KeyStore (Maybe [KeyPair])
 getKeyPairsFromSet n = do
   ks <- getKeySet n
@@ -351,8 +350,8 @@ inviteSite_getkeys name' = do
               valid <- query $ IsKeysetsInviteSite name user
               if (fromJust valid) then 
                   do keys <- fmap fromJust $ query $ GetInviteKeysFromSet name
-                     let keys' = map (\(k,_) -> show k ++ "\n") 
-                                 keys
+                     rkeys <- lift $ shuffle keys
+                     let keys' = map (\(k,_) -> show k ++ "\n") rkeys
                      ok $ toResponse $ concat keys' else
                   unauthorized $ toResponse "you are not allowed to receive invite keys"
 
@@ -367,8 +366,8 @@ refSite_getkeys name' = do
               valid <- query $ IsKeysetsRefSite name user
               if (fromJust valid) then 
                   do keys <- fmap fromJust $ query $ GetRefKeysFromSet name
-                     let keys' = map (\(k, _) -> show k ++ "\n") 
-                                 keys
+                     rkeys <- lift $ shuffle keys
+                     let keys' = map (\(k, _) -> show k ++ "\n") rkeys
                      ok $ toResponse $ concat keys' else
                   unauthorized $ toResponse "you are not allowed to receive invite keys"
 

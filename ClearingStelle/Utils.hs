@@ -1,11 +1,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS -fglasgow-exts #-}
 
-module ClearingStelle.Utils (trim, page, build_form) where
+module ClearingStelle.Utils (trim, shuffle, page, build_form) where
 
 import Data.Char
 import Data.Time
 import Text.XHtml.Strict as XHTML
+import System.Random 
 
 import Happstack.Data
 
@@ -14,6 +15,13 @@ trim :: String -> String
 trim = f . f
     where f = reverse . dropWhile isSpace
 
+shuffle :: [a] -> IO [a]
+shuffle = shuffle' []
+    where shuffle' l [] = do return l
+          shuffle' d s = do
+            i <- getStdRandom (randomR (0, length s - 1))
+            let (as, b:bs) = splitAt i s
+            shuffle' (b:d) (as ++ bs)
 
 page :: String -> Html -> Html
 page t c = 
