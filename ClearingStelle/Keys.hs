@@ -279,19 +279,21 @@ fetchKey ref = do
     Nothing -> fail $ "unable to find refKey: " ++ show ref
     Just s@(KeySet name ps cr mgr is rs ni nr d)  -> do
       let pair = find (\r -> ref == kp_refKey r) ps
-      case pair of
-        Nothing -> error "keylookup error"
-        Just p@(KeyPair i r c fi fr co)  -> 
-            if (isJust co) then
-                fail $ "key " ++ show ref ++ " already used" else
-                do time <- unsafeIOToEv $ getCurrentTime
-                   let ps' = (KeyPair i r c fi fr (Just time))  : 
-                             (filter (\r -> ref /= kp_refKey r) ps)
-                   let ks' = (KeySet name ps' cr mgr is rs ni nr d)
-                   kss <- fmap keySets getState
-                   let kss' = ks' : (filter (\x -> name /= ks_name x) kss)
-                   putState $ KeyStore kss'
-                   return i
+      if (d) then 
+          fail $ "key " ++ show ref ++ " is disabled" else 
+          case pair of
+            Nothing -> error "keylookup error"
+            Just p@(KeyPair i r c fi fr co)  -> 
+                if (isJust co) then
+                    fail $ "key " ++ show ref ++ " already used" else
+                    do time <- unsafeIOToEv $ getCurrentTime
+                       let ps' = (KeyPair i r c fi fr (Just time))  : 
+                                 (filter (\r -> ref /= kp_refKey r) ps)
+                       let ks' = (KeySet name ps' cr mgr is rs ni nr d)
+                       kss <- fmap keySets getState
+                       let kss' = ks' : (filter (\x -> name /= ks_name x) kss)
+                       putState $ KeyStore kss'
+                       return i
 
 insertKeySet :: KeySet -> Update KeyStore ()
 insertKeySet ks = 
