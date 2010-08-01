@@ -74,12 +74,13 @@ instance Component UserDB where
     initialValue = UserDB [ User "test" "test" [Admin, Manager, InviteSite, RefSite]]
 
 
-isUserInRole :: Role -> String -> Query UserDB Bool
-isUserInRole r u = fmap (M.member u) $ getUserMap r
+isUserInRole :: Role -> String -> Query UserDB (Maybe Bool)
+isUserInRole r u = fmap (Just . M.member u) $ getUserMap r
 
-validRoles :: String -> String -> Query UserDB Bool
+validRoles :: String -> String -> Query UserDB (Maybe Bool)
 validRoles inv ref = 
-    fmap and $ sequence [ isUserInRole InviteSite inv, isUserInRole RefSite ref ]
+    fmap (Just . and) $ sequence [ fmap fromJust $ isUserInRole InviteSite inv
+                        , fmap fromJust $ isUserInRole RefSite ref ]
 
 
 getUserMap :: Role -> Query UserDB (M.Map String String)

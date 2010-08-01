@@ -206,10 +206,15 @@ validKeySetName (k:ks) n
     | otherwise = validKeySetName ks n
 
 
-isKeysetsInviteSite :: String -> User -> Query KeyStore Bool
+isKeysetsInviteSite :: String -> User -> Query KeyStore (Maybe Bool)
 isKeysetsInviteSite n u = do
   is <- fmap (ks_inviteSite . fromJust) $ getKeySet n
-  return $ is == u
+  return $ Just $ is == u
+
+isKeysetsRefSite :: String -> User -> Query KeyStore (Maybe Bool)
+isKeysetsRefSite n u = do
+  is <- fmap (ks_refSite . fromJust) $ getKeySet n
+  return $ Just $ is == u
 
 getKeySet :: String -> Query KeyStore (Maybe KeySet)
 getKeySet n = do
@@ -230,14 +235,15 @@ getInviteKeysFromSet :: String -> Query KeyStore (Maybe [(InviteKey, Bool)])
 getInviteKeysFromSet n = do
   kps <- getKeyPairsFromSet n
   case (kps) of 
-    Just kps' -> return $ Just [ (kp_inviteKey kp , isNothing $ kp_inviteKeyFetched kp) | kp <- kps' ]
+    Just kps' -> return $ Just [ (kp_inviteKey kp 
+                                 , isJust $ kp_inviteKeyFetched kp) | kp <- kps' ]
     Nothing -> return Nothing
          
 getRefKeysFromSet :: String -> Query KeyStore (Maybe [(RefKey, Bool)])
 getRefKeysFromSet n = do
   kps <- getKeyPairsFromSet n
   case (kps) of 
-    Just kps' -> return $ Just [ (kp_refKey kp, isNothing $ kp_inviteKeyFetched kp) | kp <- kps' ]
+    Just kps' -> return $ Just [ (kp_refKey kp, isJust $ kp_inviteKeyFetched kp) | kp <- kps' ]
     Nothing -> return Nothing
 
 getAllKeySets :: Query KeyStore [KeySet]
@@ -259,7 +265,7 @@ createKeySet name m inv ref n notifyi notifyr  =
        time <- unsafeIOToEv $ getCurrentTime
        insertKeySet $ KeySet name kps time m inv ref notifyi notifyr False
 
-$(mkMethods ''KeyStore ['createKeySet, 'getKeySet, 'isKeysetsInviteSite, 'getInviteKeysFromSet, 'getRefKeysFromSet])
+$(mkMethods ''KeyStore ['createKeySet, 'getKeySet, 'isKeysetsInviteSite,'isKeysetsRefSite, 'getInviteKeysFromSet, 'getRefKeysFromSet])
 
 inviteSite_getkeys :: String -> ServerPart Response
 inviteSite_getkeys name' = do
@@ -270,9 +276,11 @@ inviteSite_getkeys name' = do
     Nothing -> fail $ "keyset with name " ++ name ++ " couls not be found."
     Just ks -> do
               valid <- query $ IsKeysetsInviteSite name user
-              if (valid) then 
-                  do keys <- query $ GetInviteKeysFromSet name
-                     ok $ toResponse $ show keys else
+              if (fromJust valid) then 
+                  do keys <- fmap fromJust $ query $ GetInviteKeysFromSet name
+                     let keys' = map (\(k,_) -> show k ++ "\n") 
+                                 keys
+                     ok $ toResponse $ concat keys' else
                   unauthorized $ toResponse "you are not allowed to receive invite keys"
 
 refSite_getkeys :: String -> ServerPart Response
@@ -283,10 +291,12 @@ refSite_getkeys name' = do
   case (ks) of
     Nothing -> fail $ "keyset with name " ++ name ++ " couls not be found."
     Just ks -> do
-              valid <- query $ IsKeysetsInviteSite name user
-              if (valid) then 
-                  do keys <- query $ GetRefKeysFromSet name
-                     ok $ toResponse $ show keys else
+              valid <- query $ IsKeysetsRefSite name user
+              if (fromJust valid) then 
+                  do keys <- fmap fromJust $ query $ GetRefKeysFromSet name
+                     let keys' = map (\(k, _) -> show k ++ "\n") 
+                                 keys
+                     ok $ toResponse $ concat keys' else
                   unauthorized $ toResponse "you are not allowed to receive invite keys"
 
 manager_createkeyset_post :: ServerPart Response
@@ -306,10 +316,10 @@ manager_createkeyset_post = do
                       Nothing -> fail $ "unknown ref site:" ++ ref
                       Just r -> return r
            valid <- query $ ValidRoles (user_email inv') (user_email ref')        
-           if (valid) then do    
+           if (fromJust valid) then do    
                         update $ CreateKeySet name user inv' ref' n notifyi notifyr
                         ok $ toResponse $ "created keyset" else 
-               fail $ show inv ++ " or " ++ " don't have the valid roles."
+               fail $ show inv ++ " or " ++ " does not have have the valid roles."
 
 
 manager_createkeyset_get = 
