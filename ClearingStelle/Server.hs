@@ -27,11 +27,13 @@ server_part =
          ]
 
 admin_part = 
-    roleAuth Admin $ dir "adduser" $ 
-             msum [ methodSP GET  $ admin_adduser_get
-                  , methodSP POST $ admin_adduser_post
-                  ]
-                  
+    roleAuth Admin $ msum [ dir "adduser" $ 
+                                msum [ methodSP GET  $ admin_adduser_get
+                                     , methodSP POST $ admin_adduser_post
+                                     ]
+                          , dir "users" $ admin_users_get
+                          ]
+                            
 
 manager_part = 
     roleAuth Manager $ dir "createkeyset" $ 

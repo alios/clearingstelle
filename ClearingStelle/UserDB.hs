@@ -3,7 +3,7 @@
 
 module ClearingStelle.UserDB
     (Role(..), UserDB, User(..), roleAuth, IsUserInRole, validRoles, ValidRoles(..), GetUser(..), getCurrentUser
-    ,admin_adduser_get, admin_adduser_post) where
+    ,admin_adduser_get, admin_adduser_post, admin_users_get) where
 
 import Data.Maybe
 import Data.List
@@ -56,7 +56,7 @@ instance FromData User where
       let roles' = [(Admin, inRole "isAdmin")
                    ,(Manager, inRole "isManager")
                    ,(InviteSite, inRole "isInviteSite")
-                   ,(RefSite, inRole "isReftSite")]
+                   ,(RefSite, inRole "isRefSite")]
           roles  = [r | (r, e) <- roles', e]
           inRole s = s `M.member` ps
       return $ User email password roles
@@ -83,6 +83,9 @@ validRoles inv ref =
                         , fmap fromJust $ isUserInRole RefSite ref ]
 
 
+getUserDB = fmap userdb_users ask
+
+
 getUserMap :: Role -> Query UserDB (M.Map String String)
 getUserMap r =
     do userdb <- fmap userdb_users ask
@@ -103,8 +106,14 @@ addUser u
                fail $ "user " ++ (user_email u) ++ " already exists" else
                putState $ UserDB (u:us)
 
-$(mkMethods ''UserDB ['getUserMap, 'addUser, 'isUserInRole, 'validRoles, 'getUser])
+     
 
+$(mkMethods ''UserDB ['getUserMap, 'addUser, 'isUserInRole, 'validRoles, 'getUser, 'getUserDB])
+
+
+admin_users_get = do
+  db <- query $ GetUserDB
+  ok $ toResponse $ show db
 
 admin_adduser_get = 
     ok $ toResponse $ admin_adduser_page
