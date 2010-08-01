@@ -3,7 +3,7 @@
 
 module ClearingStelle.UserDB
     (Role(..), UserDB, User(..), roleAuth, IsUserInRole, validRoles, ValidRoles(..), GetUser(..), getCurrentUser
-    ,admin_adduser_get, admin_adduser_post, admin_users_get) where
+    ,admin_adduser_get, admin_adduser_post, admin_users_get, admin_deluser) where
 
 import Data.Maybe
 import Data.List
@@ -106,10 +106,23 @@ addUser u
                fail $ "user " ++ (user_email u) ++ " already exists" else
                putState $ UserDB (u:us)
 
-     
+delUser :: User -> Update UserDB ()
+delUser u = do
+  db <- runQuery $ getUserDB
+  let db' = filter (\u' -> u' /= u) db 
+  putState $ UserDB db'
 
-$(mkMethods ''UserDB ['getUserMap, 'addUser, 'isUserInRole, 'validRoles, 'getUser, 'getUserDB])
+$(mkMethods ''UserDB ['getUserMap, 'addUser, 'isUserInRole, 'validRoles, 'getUser, 'getUserDB, 'delUser])
 
+admin_deluser :: String -> ServerPart Response
+admin_deluser input = do
+  let input' = tail input 
+  u <- query $ GetUser $ input'
+  case u of 
+    Nothing -> badRequest $ toResponse $ "unable to find user " ++ input'
+    Just u -> do 
+           update $ DelUser u
+           ok $ toResponse $ "deleted user " ++ input'
 
 admin_users_get = do
   db <- query $ GetUserDB

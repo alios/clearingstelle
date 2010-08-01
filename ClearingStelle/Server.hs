@@ -31,6 +31,7 @@ admin_part =
                                 msum [ methodSP GET  $ admin_adduser_get
                                      , methodSP POST $ admin_adduser_post
                                      ]
+                          , dir "deluser" $ uriRest admin_deluser
                           , dir "users" $ admin_users_get
                           ]
                             

@@ -309,8 +309,9 @@ createKeySet name m inv ref n notifyi notifyr  =
        time <- unsafeIOToEv $ getCurrentTime
        insertKeySet $ KeySet name kps time m inv ref notifyi notifyr False
 
-$(mkMethods ''KeyStore ['createKeySet, 'getKeySet, 'isKeysetsInviteSite,'isKeysetsRefSite
-                       ,'getInviteKeysFromSet, 'getRefKeysFromSet, 'fetchKey])
+$(mkMethods ''KeyStore ['createKeySet, 'getKeySet, 'isKeysetsInviteSite
+                       ,'isKeysetsRefSite ,'getInviteKeysFromSet
+                       , 'getRefKeysFromSet, 'fetchKey])
 
 fetchkey_page :: Html
 fetchkey_page =
