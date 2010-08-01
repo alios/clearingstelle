@@ -4,7 +4,8 @@
 
 module ClearingStelle.Keys (KeyStore(..)
                            , manager_createkeyset_get
-                           , manager_createkeyset_post) where
+                           , manager_createkeyset_post
+                           , inviteSite_getkeys, reqSite_getkeys) where
 
 import System.Random
 import Data.Generics(Data)
@@ -23,8 +24,6 @@ import Happstack.Server.SimpleHTTP
 
 import ClearingStelle.UserDB
 import ClearingStelle.Utils
-
-import Debug.Trace
 
 newtype Tupel = Tupel String
                 deriving (Show, Read, Eq, Data, Typeable)
@@ -189,28 +188,88 @@ validKeySetName (k:ks) n
     | otherwise = validKeySetName ks n
 
 
-getAllKeySets = fmap keySets getState
+isKeysetsInviteSite :: String -> User -> Query KeyStore Bool
+isKeysetsInviteSite n u = do
+  is <- fmap (ks_inviteSite . fromJust) $ getKeySet n
+  return $ is == u
+
+getKeySet :: String -> Query KeyStore (Maybe KeySet)
+getKeySet n = do
+  ks <- fmap (filter (\s -> n == ks_name s)) getAllKeySets
+  case (ks) of
+    []  -> return Nothing
+    [s] -> return $ Just s
+    otherwise -> error $ "found duplicate keysets with name: " ++ n
+  
+getKeyPairsFromSet :: String -> Query KeyStore (Maybe [KeyPair])
+getKeyPairsFromSet n = do
+  ks <- getKeySet n
+  case (ks) of 
+    Just ks' -> return $ Just $ ks_keyPairs ks'
+    Nothing -> return $ Nothing
+
+getInviteKeysFromSet :: String -> Query KeyStore (Maybe [(InviteKey, Bool)])
+getInviteKeysFromSet n = do
+  kps <- getKeyPairsFromSet n
+  case (kps) of 
+    Just kps' -> return $ Just [ (kp_inviteKey kp , isNothing $ kp_inviteKeyFetched kp) | kp <- kps' ]
+    Nothing -> return Nothing
+         
+getRefKeysFromSet :: String -> Query KeyStore (Maybe [(RefKey, Bool)])
+getRefKeysFromSet n = do
+  kps <- getKeyPairsFromSet n
+  case (kps) of 
+    Just kps' -> return $ Just [ (kp_refKey kp, isNothing $ kp_inviteKeyFetched kp) | kp <- kps' ]
+    Nothing -> return Nothing
+
+getAllKeySets :: Query KeyStore [KeySet]
+getAllKeySets = fmap  keySets askState
+
 getAllKeyPairs = fmap (concat . (map ks_keyPairs)) getAllKeySets
 
 insertKeySet :: KeySet -> Update KeyStore ()
 insertKeySet ks = 
-    do kss <- getAllKeySets
+    do kss <- runQuery getAllKeySets
        if (validKeySetName kss ks) then 
            putState $ KeyStore (ks:kss) else 
            fail $ "KeySet with name " ++ ks_name ks ++ " already exists in KeyStore." 
      
 createKeySet :: String -> User -> User -> User -> Int -> Bool -> Bool -> Update KeyStore ()
 createKeySet name m inv req n notifyi notifyr  =
-    do kps' <- getAllKeyPairs
+    do kps' <- runQuery getAllKeyPairs
        kps <- unsafeIOToEv $ getRandomKeyPairs kps' n
        time <- unsafeIOToEv $ getCurrentTime
        insertKeySet $ KeySet name kps time m inv req notifyi notifyr False
 
-$(mkMethods ''KeyStore ['getAllKeyPairs, 'insertKeySet, 'createKeySet])
+$(mkMethods ''KeyStore ['createKeySet, 'getKeySet, 'isKeysetsInviteSite, 'getInviteKeysFromSet, 'getRefKeysFromSet])
 
-traceTrue x = trace (show x ++ "nn") True 
-traceIt x = trace (show x ++ "nn") x 
-traceMsg msg x = trace ( "nn" ++ msg ++ (show x) ++ "nn") x
+inviteSite_getkeys :: String -> ServerPart Response
+inviteSite_getkeys name' = do
+  let name = tail name'
+  user <- fmap fromJust getCurrentUser
+  ks <- query $ GetKeySet name 
+  case (ks) of
+    Nothing -> fail $ "keyset with name " ++ name ++ " couls not be found."
+    Just ks -> do
+              valid <- query $ IsKeysetsInviteSite name user
+              if (valid) then 
+                  do keys <- query $ GetInviteKeysFromSet name
+                     ok $ toResponse $ show keys else
+                  unauthorized $ toResponse "you are not allowed to receive invite keys"
+
+reqSite_getkeys :: String -> ServerPart Response
+reqSite_getkeys name' = do
+  let name = tail name'
+  user <- fmap fromJust getCurrentUser
+  ks <- query $ GetKeySet name 
+  case (ks) of
+    Nothing -> fail $ "keyset with name " ++ name ++ " couls not be found."
+    Just ks -> do
+              valid <- query $ IsKeysetsInviteSite name user
+              if (valid) then 
+                  do keys <- query $ GetRefKeysFromSet name
+                     ok $ toResponse $ show keys else
+                  unauthorized $ toResponse "you are not allowed to receive invite keys"
 
 manager_createkeyset_post :: ServerPart Response
 manager_createkeyset_post = do
@@ -233,6 +292,7 @@ manager_createkeyset_post = do
                         update $ CreateKeySet name user inv' ref' n notifyi notifyr
                         ok $ toResponse $ "created keyset" else 
                fail $ show inv ++ " or " ++ " don't have the valid roles."
+
 
 manager_createkeyset_get = 
     ok $ toResponse $ manager_createkeyset_page

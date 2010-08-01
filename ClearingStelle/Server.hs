@@ -20,6 +20,8 @@ server_part :: ServerPart Response
 server_part = 
     msum [ dir "admin" $ admin_part
          , dir "manager" $ manager_part
+         , dir "invitesite" $ inviteSite_part
+         , dir "refsite" $ reqSite_part
          ]
 
 admin_part = 
@@ -35,6 +37,13 @@ manager_part =
                   , methodSP POST $ manager_createkeyset_post
                   ]
 
+
+inviteSite_part =
+    roleAuth InviteSite $ dir "getkeys" $ uriRest $ inviteSite_getkeys
+
+reqSite_part =
+    roleAuth RequestSite $ dir "getkeys" $ uriRest $ reqSite_getkeys
+          
 
 
 clearingstelle =
