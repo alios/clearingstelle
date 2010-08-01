@@ -22,6 +22,8 @@ server_part =
          , dir "manager" $ manager_part
          , dir "invitesite" $ inviteSite_part
          , dir "refsite" $ refSite_part
+         , methodSP GET $ fetchkey_get
+         , methodSP POST $ fetchkey_post
          ]
 
 admin_part = 

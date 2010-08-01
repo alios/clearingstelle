@@ -5,6 +5,7 @@
 module ClearingStelle.Keys (KeyStore(..)
                            , manager_createkeyset_get
                            , manager_createkeyset_post
+                           , fetchkey_get, fetchkey_post
                            , inviteSite_getkeys, refSite_getkeys) where
 
 import System.Random
@@ -15,7 +16,7 @@ import Data.Time
 import Data.Maybe
 import Data.List
 import Text.XHtml.Strict as XHTML
-
+import Text.ParserCombinators.Parsec hiding (getState)
 import Control.Monad.State 
 import Control.Monad.Reader
 import Happstack.Data
@@ -33,8 +34,6 @@ $(deriveSerialize ''Tupel)
 
 instance Show Tupel where
     show (Tupel s) = s
-
-
 
 
 data InviteKey = InviteKey (Tupel, Tupel, Tupel, Tupel)
@@ -101,7 +100,9 @@ $(deriveSerialize ''KeyStore)
 instance Component KeyStore where
     type Dependencies KeyStore = End
     initialValue = KeyStore []
-
+  
+  
+  
 -- | 'validChar' is a predicate for the allowed characters in the 'RefKEy' and
 --   in the 'InviteKey'.
 --   allowed are all lower case ASCII characters and digits exept all vocals and
@@ -116,6 +117,21 @@ validChar c =
 
 validChars :: [Char]
 validChars = [ c | c <- map chr [0..255], validChar c]
+
+keyChar = oneOf validChars
+refTupel = count refKeyTupelLen keyChar
+refKeyParser =
+    do t1 <- refTupel
+       optional $ char '-'
+       t2 <- refTupel
+       optional $ char '-'
+       t3 <- refTupel
+       optional $ char '-'
+       t4 <- refTupel
+       optional $ char '-'
+       t5 <- refTupel
+       return $ RefKey (Tupel t1, Tupel t2, Tupel t3, Tupel t4, Tupel t5)
+
 
 getRandomChar = do  
   i <- getStdRandom (randomR (minBound, maxBound))
@@ -251,6 +267,32 @@ getAllKeySets = fmap  keySets askState
 
 getAllKeyPairs = fmap (concat . (map ks_keyPairs)) getAllKeySets
 
+getKeySetByRefKey :: RefKey -> Query KeyStore (Maybe KeySet)
+getKeySetByRefKey ref = 
+    let sfilter s = isJust $ find (\p -> kp_refKey p == ref) $ ks_keyPairs s 
+    in fmap (find sfilter) getAllKeySets
+
+fetchKey :: RefKey -> Update KeyStore InviteKey
+fetchKey ref = do
+  ks <- runQuery $ getKeySetByRefKey ref
+  case (ks) of
+    Nothing -> fail $ "unable to find refKey: " ++ show ref
+    Just s@(KeySet name ps cr mgr is rs ni nr d)  -> do
+      let pair = find (\r -> ref == kp_refKey r) ps
+      case pair of
+        Nothing -> error "keylookup error"
+        Just p@(KeyPair i r c fi fr co)  -> 
+            if (isJust co) then
+                fail $ "key " ++ show ref ++ " already used" else
+                do time <- unsafeIOToEv $ getCurrentTime
+                   let ps' = (KeyPair i r c fi fr (Just time))  : 
+                             (filter (\r -> ref /= kp_refKey r) ps)
+                   let ks' = (KeySet name ps' cr mgr is rs ni nr d)
+                   kss <- fmap keySets getState
+                   let kss' = ks' : (filter (\x -> name /= ks_name x) kss)
+                   putState $ KeyStore kss'
+                   return i
+
 insertKeySet :: KeySet -> Update KeyStore ()
 insertKeySet ks = 
     do kss <- runQuery getAllKeySets
@@ -265,7 +307,34 @@ createKeySet name m inv ref n notifyi notifyr  =
        time <- unsafeIOToEv $ getCurrentTime
        insertKeySet $ KeySet name kps time m inv ref notifyi notifyr False
 
-$(mkMethods ''KeyStore ['createKeySet, 'getKeySet, 'isKeysetsInviteSite,'isKeysetsRefSite, 'getInviteKeysFromSet, 'getRefKeysFromSet])
+$(mkMethods ''KeyStore ['createKeySet, 'getKeySet, 'isKeysetsInviteSite,'isKeysetsRefSite, 'getInviteKeysFromSet, 'getRefKeysFromSet, 'fetchKey])
+
+fetchkey_page :: Html
+fetchkey_page =
+    let f = build_form "Checkout Invite Key" "/"
+            [ ("", [("RefKey", textfield "")]) ]
+    in page "Checkout Invite Key" f
+
+fetchkey_get = ok $ toResponse fetchkey_page
+             
+fetchkey_data :: RqData RefKey
+fetchkey_data = do
+  key <- fmap trim $ look "RefKey"
+  let ref' = parse refKeyParser key key
+  case ref' of 
+    Left e -> fail $ show e
+    Right ref -> return ref
+     
+fetchkey_post = do      
+  postdata <- getDataFn fetchkey_data
+
+  case postdata of 
+    Nothing -> badRequest $ toResponse $ "no valid RefKey"
+    Just ref  -> 
+        do inv <- update $ FetchKey ref
+           ok $ toResponse $ page "Your Invite key" << h2 << show inv
+  
+
 
 inviteSite_getkeys :: String -> ServerPart Response
 inviteSite_getkeys name' = do
