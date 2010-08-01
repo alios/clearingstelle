@@ -314,7 +314,7 @@ $(mkMethods ''KeyStore ['createKeySet, 'getKeySet, 'isKeysetsInviteSite,'isKeyse
 fetchkey_page :: Html
 fetchkey_page =
     let f = build_form "Checkout Invite Key" "/"
-            [ ("", [("RefKey", textfield "")]) ]
+            [ ("Enter the Reference Key you received", [("RefKey", textfield "")]) ]
     in page "Checkout Invite Key" f
 
 fetchkey_get = ok $ toResponse fetchkey_page
