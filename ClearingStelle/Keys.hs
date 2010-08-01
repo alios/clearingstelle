@@ -13,6 +13,7 @@ import Data.Typeable
 import Data.Char        
 import Data.Time
 import Data.Maybe
+import Data.List
 import Text.XHtml.Strict as XHTML
 
 import Control.Monad.State 
@@ -26,24 +27,41 @@ import ClearingStelle.UserDB
 import ClearingStelle.Utils
 
 newtype Tupel = Tupel String
-                deriving (Show, Read, Eq, Data, Typeable)
+                deriving (Eq, Data, Typeable)
 instance Version Tupel  
 $(deriveSerialize ''Tupel)
 
+instance Show Tupel where
+    show (Tupel s) = s
+
+
+
+
 data InviteKey = InviteKey (Tupel, Tupel, Tupel, Tupel)
-               deriving (Show, Read, Eq, Data, Typeable)
+               deriving (Eq, Data, Typeable)
 instance Version InviteKey
 $(deriveSerialize ''InviteKey)
                         
+instance Show InviteKey where
+    show (InviteKey (a,b,c,d)) =
+        let ts = [show t | t <- [a,b,c,d]]
+        in intercalate "-" ts
+
 inviteKeyTupelLen = 5
 
 data RefKey = RefKey (Tupel, Tupel, Tupel, Tupel, Tupel)
-               deriving (Show, Read, Eq, Data, Typeable)
+               deriving (Eq, Data, Typeable)
 instance Version RefKey
 $(deriveSerialize ''RefKey)
 
+instance Show RefKey where
+    show (RefKey (a,b,c,d,e)) =
+        let ts = [show t | t <- [a,b,c,d,e]]
+        in intercalate "-" ts
 
 refKeyTupelLen = 4
+
+
 
 data KeyPair = KeyPair {
       kp_inviteKey :: InviteKey,
@@ -52,7 +70,7 @@ data KeyPair = KeyPair {
       kp_inviteKeyFetched :: Maybe UTCTime,
       kp_refKeyFetched :: Maybe UTCTime,
       kp_checkedOut :: Maybe UTCTime
-} deriving (Show, Read, Data, Typeable)
+} deriving (Show, Data, Typeable)
 instance Version KeyPair
 $(deriveSerialize ''KeyPair)
 
@@ -67,14 +85,14 @@ data KeySet = KeySet {
       ks_notifyInviteSite :: Bool,
       ks_notifyRequestSite :: Bool,
       ks_disabled :: Bool
-} deriving (Show, Read, Data, Typeable)
+} deriving (Show, Data, Typeable)
 instance Version KeySet
 
 $(deriveSerialize ''KeySet)
 
 data KeyStore = KeyStore {
       keySets :: [KeySet]
-} deriving (Show, Read, Data, Typeable)
+} deriving (Show, Data, Typeable)
 
 instance Version KeyStore
 
@@ -123,11 +141,11 @@ getRandomInviteKey = do
   
 getRandomRefKey :: IO RefKey
 getRandomRefKey = do
-  a <- getRandomTupel inviteKeyTupelLen
-  b <- getRandomTupel inviteKeyTupelLen
-  c <- getRandomTupel inviteKeyTupelLen
-  d <- getRandomTupel inviteKeyTupelLen
-  e <- getRandomTupel inviteKeyTupelLen  
+  a <- getRandomTupel refKeyTupelLen
+  b <- getRandomTupel refKeyTupelLen
+  c <- getRandomTupel refKeyTupelLen
+  d <- getRandomTupel refKeyTupelLen
+  e <- getRandomTupel refKeyTupelLen  
   return $ RefKey (a,b,c,d,e)
 
 getRandomKeyPair :: IO KeyPair
