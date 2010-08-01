@@ -5,7 +5,7 @@
 module ClearingStelle.Keys (KeyStore(..)
                            , manager_createkeyset_get
                            , manager_createkeyset_post
-                           , inviteSite_getkeys, reqSite_getkeys) where
+                           , inviteSite_getkeys, refSite_getkeys) where
 
 import System.Random
 import Data.Generics(Data)
@@ -81,9 +81,9 @@ data KeySet = KeySet {
       ks_created :: UTCTime,
       ks_manager :: User,
       ks_inviteSite :: User,
-      ks_requestSite :: User,
+      ks_refSite :: User,
       ks_notifyInviteSite :: Bool,
-      ks_notifyRequestSite :: Bool,
+      ks_notifyRefSite :: Bool,
       ks_disabled :: Bool
 } deriving (Show, Data, Typeable)
 instance Version KeySet
@@ -253,11 +253,11 @@ insertKeySet ks =
            fail $ "KeySet with name " ++ ks_name ks ++ " already exists in KeyStore." 
      
 createKeySet :: String -> User -> User -> User -> Int -> Bool -> Bool -> Update KeyStore ()
-createKeySet name m inv req n notifyi notifyr  =
+createKeySet name m inv ref n notifyi notifyr  =
     do kps' <- runQuery getAllKeyPairs
        kps <- unsafeIOToEv $ getRandomKeyPairs kps' n
        time <- unsafeIOToEv $ getCurrentTime
-       insertKeySet $ KeySet name kps time m inv req notifyi notifyr False
+       insertKeySet $ KeySet name kps time m inv ref notifyi notifyr False
 
 $(mkMethods ''KeyStore ['createKeySet, 'getKeySet, 'isKeysetsInviteSite, 'getInviteKeysFromSet, 'getRefKeysFromSet])
 
@@ -275,8 +275,8 @@ inviteSite_getkeys name' = do
                      ok $ toResponse $ show keys else
                   unauthorized $ toResponse "you are not allowed to receive invite keys"
 
-reqSite_getkeys :: String -> ServerPart Response
-reqSite_getkeys name' = do
+refSite_getkeys :: String -> ServerPart Response
+refSite_getkeys name' = do
   let name = tail name'
   user <- fmap fromJust getCurrentUser
   ks <- query $ GetKeySet name 

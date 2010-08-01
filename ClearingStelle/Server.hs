@@ -21,7 +21,7 @@ server_part =
     msum [ dir "admin" $ admin_part
          , dir "manager" $ manager_part
          , dir "invitesite" $ inviteSite_part
-         , dir "refsite" $ reqSite_part
+         , dir "refsite" $ refSite_part
          ]
 
 admin_part = 
@@ -41,8 +41,8 @@ manager_part =
 inviteSite_part =
     roleAuth InviteSite $ dir "getkeys" $ uriRest $ inviteSite_getkeys
 
-reqSite_part =
-    roleAuth RequestSite $ dir "getkeys" $ uriRest $ reqSite_getkeys
+refSite_part =
+    roleAuth RefSite $ dir "getkeys" $ uriRest $ refSite_getkeys
           
 
 

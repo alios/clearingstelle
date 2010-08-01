@@ -30,12 +30,12 @@ admin_adduser_page =
             ,("Roles", [("Admin", checkbox "isAdmin" "isAdmin")
                        ,("Manager", checkbox "isManager" "isManager")
                        ,("InviteSite", checkbox "isInviteSite" "isInviteSite")
-                       ,("RequestSite", checkbox "isRequestSite" "isRequestSite")
+                       ,("RefSite", checkbox "isRefSite" "isRefSite")
                        ])
             ]
     in page "Add User" f
 
-data Role = Admin | Manager | InviteSite | RequestSite
+data Role = Admin | Manager | InviteSite | RefSite
           deriving (Show, Read, Eq, Enum, Data, Typeable)
 instance Version Role
 $(deriveSerialize ''Role)
@@ -56,7 +56,7 @@ instance FromData User where
       let roles' = [(Admin, inRole "isAdmin")
                    ,(Manager, inRole "isManager")
                    ,(InviteSite, inRole "isInviteSite")
-                   ,(RequestSite, inRole "isRequestSite")]
+                   ,(RefSite, inRole "isReftSite")]
           roles  = [r | (r, e) <- roles', e]
           inRole s = s `M.member` ps
       return $ User email password roles
@@ -71,15 +71,15 @@ $(deriveSerialize ''UserDB)
 
 instance Component UserDB where
     type Dependencies UserDB = End
-    initialValue = UserDB [ User "test" "test" [Admin, Manager, InviteSite, RequestSite]]
+    initialValue = UserDB [ User "test" "test" [Admin, Manager, InviteSite, RefSite]]
 
 
 isUserInRole :: Role -> String -> Query UserDB Bool
 isUserInRole r u = fmap (M.member u) $ getUserMap r
 
 validRoles :: String -> String -> Query UserDB Bool
-validRoles inv req = 
-    fmap and $ sequence [ isUserInRole InviteSite inv, isUserInRole RequestSite req ]
+validRoles inv ref = 
+    fmap and $ sequence [ isUserInRole InviteSite inv, isUserInRole RefSite ref ]
 
 
 getUserMap :: Role -> Query UserDB (M.Map String String)
