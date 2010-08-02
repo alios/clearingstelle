@@ -23,9 +23,14 @@ shuffle = shuffle' []
             let (as, b:bs) = splitAt i s
             shuffle' (b:d) (as ++ bs)
 
+mmeta e c = meta ! [ httpequiv e, content c ]
+
 page :: String -> Html -> Html
 page t c = 
-    let headers = [thetitle << t
+    let headers = [ thetitle << t
+                  , mmeta "expires" "0"
+                  , mmeta "cache-control" "no-cache"
+                  , mmeta "pragma" "no-cache"
                   ]
         hdr = header << foldl (+++) noHtml headers
         bdy = body << ((h1 << t) +++ c)
