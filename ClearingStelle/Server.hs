@@ -15,6 +15,8 @@ import Happstack.Server.SimpleHTTP
 import Happstack.State
 
 import ClearingStelle.Data
+import Network.Socket
+import Network.BSD
 
 server_part :: ServerPart Response
 server_part = 
@@ -51,11 +53,18 @@ refSite_part =
           
 
 
-clearingstelle =
-    let conf = nullConf -- validateConf -- nullConf
-    in do txCtrl <- startSystemState clearingStelleState 
-          tid <- forkIO $ simpleHTTP conf server_part 
-          waitForTermination
-          createCheckpoint txCtrl
-          killThread tid
-          shutdownSystem txCtrl
+clearingstelle = do
+    let conf = nullConf
+    s <- socket AF_INET Stream defaultProtocol
+    setSocketOption s ReuseAddr 1
+    h <- getHostByName "localhost"
+    let p = toEnum $ port $ conf
+    bindSocket s (SockAddrInet p (hostAddress h))
+    listen s 10
+
+    txCtrl <- startSystemState clearingStelleState 
+    tid <- forkIO $ simpleHTTPWithSocket s conf server_part
+    waitForTermination
+    createCheckpoint txCtrl
+    killThread tid
+    shutdownSystem txCtrl
