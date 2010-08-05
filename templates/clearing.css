@@ -1,0 +1,159 @@
+/***
+
+	Definitionen für Standardelemente
+
+ ***/
+* {
+	margin:0;
+	padding:0;
+}
+
+html, body {
+	height: 100%;
+	width : 100%;
+	font-family: Arial, Verdana, sans-serif;
+	font-weight: normal;
+	font-size: 1em;
+	margin: 0;
+	padding: 0;
+	background-color: #efefef;
+	text-align: justify;
+}
+
+p {
+	margin: 0.75em 0;
+}
+
+h1 {
+	font-weight:bold;
+	font-size:2.5em;
+	margin-bottom: 0.75em;
+	text-shadow:1px 1px 1px #999;
+	text-align:center;
+}
+
+h2 {
+	/*margin: 1.5em 0 0.625em 0;*/
+	margin: 1.5em 0 0;
+	font-weight: bold;
+	font-size: 1.538em;
+	color: #333;
+}
+
+form {
+	border:2px solid #555;
+	background-color:#eee;
+	padding: 1.538em;
+	border-radius:7px;
+	-moz-border-radius:7px;
+	-webkit-border-radius:7px;
+	margin-top: 0.75em;
+}
+
+label {
+	display:block;
+}
+
+input {
+	margin-top: 0.385em;
+}
+
+a {
+	text-decoration:underline;
+	color: #f80;
+}
+
+a:hover {
+	color:#FF3500;
+}
+
+
+
+
+
+
+
+
+
+/***
+
+	Formatierungen für die IDs
+
+ ***/
+#main, #footer, #impressum {
+	margin: auto;
+	width: 61.538em;
+	border: 1px solid #999;
+	border-radius: 7px;
+	-moz-border-radius: 7px;
+	-webkit-border-radius: 7px;
+	position: relative;
+	font-size: 0.813em;
+	line-height: 1.5em;
+	background-color:white;
+	padding: 1.2em;
+	color:#333;
+	margin-top:2em;
+}
+
+
+#footer {
+	background:transparent;
+	border-width:0px;
+	margin-bottom: 2.692em;
+	font-size:0.688em;
+	padding:0;
+	padding-top:0.909em;
+	margin-top:0;
+	text-align: center;
+}
+
+
+div#formcontent a {
+	color:#D70;
+}
+
+div#formcontent a:hover {
+	color:#FF3500;
+}
+
+div#formcontent p {
+	margin-top:2em;
+}
+
+div#formcontent p:first-child {
+	margin-top:0;
+}
+
+
+
+
+
+
+
+
+/***
+
+	Hacks und inhaltsbezogene Anpassungen
+
+ ***/
+address + h3 {
+	margin-top: 1.5em;
+}
+
+input[type=text] {
+	border: 1px solid #999;
+	/*background-color: #eee;*/
+	padding: 0.154em;
+	border-radius: 3px;
+	-moz-border-radius: 3px;
+	-webkit-border-radius: 3px;
+}
+
+input[type=submit] {
+	margin: 2em 25% 0;
+	font-weight:bold;
+	width: 50%;
+	padding: 0.4em;
+}
+
