@@ -335,7 +335,11 @@ fetchkey_post = do
     Nothing -> badRequest $ toResponse $ "no valid RefKey"
     Just ref  -> 
         do inv <- update $ FetchKey ref
-           ok $ toResponse $ page "Your Invite key" << h2 << show inv
+           ok $ toResponse $ page "Dein Einladungscode" << 
+              foldl (+++) noHtml [ h2 << "Dein Einladungscode wird dir hier angezeigt:"
+                                 , emphasize << show inv
+                                 , p << "Bitte kopiere oder notiere ihn dir sofort, um dir dann damit auf https://lqfb.piratenpartei.de/ einen Account anzulegen."
+                                 ]
   
 
 
