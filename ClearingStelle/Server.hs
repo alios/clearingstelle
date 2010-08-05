@@ -24,8 +24,8 @@ server_part =
          , dir "manager" $ manager_part
          , dir "invitesite" $ inviteSite_part
          , dir "refsite" $ refSite_part
-         , methodSP GET $ fetchkey_get
-         , methodSP POST $ fetchkey_post
+         , dir "clear" $ methodSP POST $ fetchkey_post
+         , methodSP GET $ movedPermanently ("/static/clearing.html") (toResponse "")
          ]
 
 admin_part = 
@@ -54,17 +54,17 @@ refSite_part =
 
 
 clearingstelle = do
-    let conf = nullConf
-    s <- socket AF_INET Stream defaultProtocol
-    setSocketOption s ReuseAddr 1
-    h <- getHostByName "localhost"
-    let p = toEnum $ port $ conf
-    bindSocket s (SockAddrInet p (hostAddress h))
-    listen s 10
+  let conf = nullConf
+  s <- socket AF_INET Stream defaultProtocol
+  setSocketOption s ReuseAddr 1
+  h <- getHostByName "localhost"
+  let p = toEnum $ port $ conf
+  bindSocket s (SockAddrInet p (hostAddress h))
+  listen s 10
 
-    txCtrl <- startSystemState clearingStelleState 
-    tid <- forkIO $ simpleHTTPWithSocket s conf server_part
-    waitForTermination
-    createCheckpoint txCtrl
-    killThread tid
-    shutdownSystem txCtrl
+  txCtrl <- startSystemState clearingStelleState 
+  tid <- forkIO $ simpleHTTPWithSocket s conf server_part
+  waitForTermination
+  createCheckpoint txCtrl
+  killThread tid
+  shutdownSystem txCtrl
