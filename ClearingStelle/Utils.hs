@@ -31,6 +31,9 @@ page t c =
                   , mmeta "expires" "0"
                   , mmeta "cache-control" "no-cache"
                   , mmeta "pragma" "no-cache"
+                  , thelink noHtml ! [rel "stylesheet"
+                                     ,href "/static/clearing.css"
+                                     ,thetype "text/html" ]
                   ]
         hdr = header << foldl (+++) noHtml headers
         bdy = body << ((h1 << t) +++ c)
