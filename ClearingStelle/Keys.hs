@@ -6,7 +6,8 @@ module ClearingStelle.Keys (KeyStore(..)
                            , manager_createkeyset_get
                            , manager_createkeyset_post
                            , fetchkey_get, fetchkey_post
-                           , inviteSite_getkeys, refSite_getkeys) where
+                           , inviteSite_getkeys, refSite_getkeys
+                           , admin_getuser_get) where
 
 import System.Random
 import Data.Generics(Data)
@@ -22,6 +23,7 @@ import Control.Monad.Reader
 import Happstack.Data
 import Happstack.State
 import Happstack.Server.SimpleHTTP
+
 
 
 import ClearingStelle.UserDB
@@ -300,17 +302,33 @@ insertKeySet ks =
        if (validKeySetName kss ks) then 
            putState $ KeyStore (ks:kss) else 
            fail $ "KeySet with name " ++ ks_name ks ++ " already exists in KeyStore." 
-     
-createKeySet :: String -> User -> User -> User -> Int -> Bool -> Bool -> Update KeyStore ()
+
+
+
 createKeySet name m inv ref n notifyi notifyr  =
+    let maxK = 250
+        c  = (n `div` maxK)
+        r  = (n `mod` maxK)
+        us = [createKeySet' (name ++ (show c')) m inv ref maxK notifyi notifyr | c' <- [0..c]] ++ 
+             [createKeySet' (name ++ (show (c + 1))) m inv ref r notifyi notifyr]
+    in sequence us
+    
+createKeySet' :: String -> User -> User -> User -> Int -> Bool -> Bool -> Update KeyStore ()
+createKeySet' name m inv ref n notifyi notifyr  =
     do kps' <- runQuery getAllKeyPairs
        kps <- unsafeIOToEv $ getRandomKeyPairs kps' n
        time <- unsafeIOToEv $ getCurrentTime
        insertKeySet $ KeySet name kps time m inv ref notifyi notifyr False
 
+getUserKeySets :: User -> Query KeyStore [KeySet]
+getUserKeySets u = do
+  kss <- fmap (filter $ \ks -> u == ks_manager ks) getAllKeySets
+  return kss
+    
+
 $(mkMethods ''KeyStore ['createKeySet, 'getKeySet, 'isKeysetsInviteSite
                        ,'isKeysetsRefSite ,'getInviteKeysFromSet
-                       , 'getRefKeysFromSet, 'fetchKey])
+                       , 'getRefKeysFromSet, 'fetchKey, 'getUserKeySets])
 
 fetchkey_page :: Html
 fetchkey_page =
@@ -358,6 +376,12 @@ inviteSite_getkeys name' = do
                      let keys' = map (\(k,_) -> show k ++ "\n") rkeys
                      ok $ toResponse $ concat keys' else
                   unauthorized $ toResponse "you are not allowed to receive invite keys"
+
+admin_getuser_get :: ServerPart Response
+admin_getuser_get = do
+  user <- fmap fromJust getCurrentUser
+  kss <- query $ GetUserKeySets user
+  ok $ toResponse $ show kss
 
 refSite_getkeys :: String -> ServerPart Response
 refSite_getkeys name' = do
