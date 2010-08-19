@@ -44,7 +44,7 @@ manager_part =
                         msum [ methodSP GET $ manager_createkeyset_get
                              , methodSP POST $ manager_createkeyset_post
                              ],
-                    dir "keypairinfo" $ uriRest $ manager_keypairinfo_get
+                    dir "keypairinfo" $ uriRest $ manager_keypairinfo
                   ]
 
 

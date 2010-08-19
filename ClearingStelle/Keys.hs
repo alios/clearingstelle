@@ -417,7 +417,8 @@ refSite_getkeys name' = do
                   unauthorized $ toResponse "you are not allowed to receive invite keys"
 
 manager_keypairinfo :: String -> ServerPart Response
-manager_keypairinfo input = do
+manager_keypairinfo input' = do
+  let input = drop 1 input'
   let refkey' = parse refKeyParser input input
   case refkey' of
     Left e -> fail $ show e
