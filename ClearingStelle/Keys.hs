@@ -427,7 +427,15 @@ manager_keypairinfo input' = do
            keypair' <- query $ GetKeyPairByRefKey manager refkey
            case keypair' of
              Nothing -> fail $ "unable to find refkey: " ++ show refkey
-             Just kp -> ok $ toResponse $ show kp
+             Just kp -> do 
+                 let inv = kp_inviteKey kp
+                 let co' = kp_checkedOut kp
+                 case co' of
+                   Just co -> ok $ toResponse $ 
+                              show inv ++ "," ++ show co ++ "\n"
+                   Nothing -> ok $ toResponse $ 
+                              show inv ++ ",\n"
+                              
 
 manager_createkeyset_post :: ServerPart Response
 manager_createkeyset_post = do
