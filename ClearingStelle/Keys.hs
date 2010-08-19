@@ -5,6 +5,7 @@
 module ClearingStelle.Keys (KeyStore(..)
                            , manager_createkeyset_get
                            , manager_createkeyset_post
+                           , manager_keypairinfo
                            , fetchkey_get, fetchkey_post
                            , inviteSite_getkeys, refSite_getkeys
                            , admin_getuser_get) where
@@ -268,6 +269,20 @@ getAllKeySets = fmap  keySets askState
 
 getAllKeyPairs = fmap (concat . (map ks_keyPairs)) getAllKeySets
 
+getKeyPairByRefKey :: User -> RefKey -> Query KeyStore (Maybe KeyPair)
+getKeyPairByRefKey u r = do
+  keyset' <- getKeySetByRefKey r
+  case (keyset') of
+    Nothing -> return Nothing
+    Just keyset ->
+        if (ks_manager keyset /= u) then
+            fail "unauthorized access" else
+            do let kps = filter (\kp -> r == kp_refKey kp) $ ks_keyPairs keyset
+               if (length kps == 1) then
+                   return $ Just $ kps !! 0 else
+                   return $ Nothing
+                              
+  
 getKeySetByRefKey :: RefKey -> Query KeyStore (Maybe KeySet)
 getKeySetByRefKey ref = 
     let sfilter s = isJust $ find (\p -> kp_refKey p == ref) $ ks_keyPairs s 
@@ -328,7 +343,9 @@ getUserKeySets u = do
 
 $(mkMethods ''KeyStore ['createKeySet, 'getKeySet, 'isKeysetsInviteSite
                        ,'isKeysetsRefSite ,'getInviteKeysFromSet
-                       , 'getRefKeysFromSet, 'fetchKey, 'getUserKeySets])
+                       ,'getRefKeysFromSet, 'fetchKey, 'getUserKeySets
+                       ,'getKeyPairByRefKey])
+
 
 fetchkey_page :: Html
 fetchkey_page =
@@ -398,6 +415,18 @@ refSite_getkeys name' = do
                      let keys' = map (\(k, _) -> show k ++ "\n") rkeys
                      ok $ toResponse $ concat keys' else
                   unauthorized $ toResponse "you are not allowed to receive invite keys"
+
+manager_keypairinfo :: String -> ServerPart Response
+manager_keypairinfo input = do
+  let refkey' = parse refKeyParser input input
+  case refkey' of
+    Left e -> fail $ show e
+    Right refkey -> 
+        do manager <- fmap fromJust getCurrentUser
+           keypair' <- query $ GetKeyPairByRefKey manager refkey
+           case keypair' of
+             Nothing -> fail $ "unable to find refkey: " ++ show refkey
+             Just kp -> ok $ toResponse $ show kp
 
 manager_createkeyset_post :: ServerPart Response
 manager_createkeyset_post = do

@@ -39,9 +39,12 @@ admin_part =
                             
 
 manager_part = 
-    roleAuth Manager $ dir "createkeyset" $ 
-             msum [ methodSP GET $ manager_createkeyset_get
-                  , methodSP POST $ manager_createkeyset_post
+    roleAuth Manager $
+             msum [ dir "createkeyset" $ 
+                        msum [ methodSP GET $ manager_createkeyset_get
+                             , methodSP POST $ manager_createkeyset_post
+                             ],
+                    dir "keypairinfo" $ uriRest $ manager_keypairinfo_get
                   ]
 
 
