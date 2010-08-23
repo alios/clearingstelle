@@ -5,7 +5,7 @@
 module ClearingStelle.Keys (KeyStore(..)
                            , manager_createkeyset_get
                            , manager_createkeyset_post
-                           , manager_keypairinfo
+                           , manager_keypairinfo_i, manager_keypairinfo_r
                            , fetchkey_get, fetchkey_post
                            , inviteSite_getkeys, refSite_getkeys
                            , admin_getuser_get) where
@@ -134,6 +134,17 @@ refKeyParser =
        optional $ char '-'
        t5 <- refTupel
        return $ RefKey (Tupel t1, Tupel t2, Tupel t3, Tupel t4, Tupel t5)
+
+inviteTupel = count inviteKeyTupelLen keyChar
+inviteKeyParser =
+    do t1 <- inviteTupel
+       optional $ char '-'
+       t2 <- inviteTupel
+       optional $ char '-'
+       t3 <- inviteTupel
+       optional $ char '-'
+       t4 <- inviteTupel
+       return $ InviteKey (Tupel t1, Tupel t2, Tupel t3, Tupel t4)
 
 getRandomChar = do  
   i <- getStdRandom (randomR (minBound, maxBound))
@@ -281,11 +292,29 @@ getKeyPairByRefKey u r = do
                if (length kps == 1) then
                    return $ Just $ kps !! 0 else
                    return $ Nothing
+
+getKeyPairByInviteKey :: User -> InviteKey -> Query KeyStore (Maybe KeyPair)
+getKeyPairByInviteKey u r = do
+  keyset' <- getKeySetByInviteKey r
+  case (keyset') of
+    Nothing -> return Nothing
+    Just keyset ->
+        if (ks_manager keyset /= u) then
+            fail "unauthorized access" else
+            do let kps = filter (\kp -> r == kp_inviteKey kp) $ ks_keyPairs keyset
+               if (length kps == 1) then
+                   return $ Just $ kps !! 0 else
+                   return $ Nothing
                               
   
 getKeySetByRefKey :: RefKey -> Query KeyStore (Maybe KeySet)
 getKeySetByRefKey ref = 
     let sfilter s = isJust $ find (\p -> kp_refKey p == ref) $ ks_keyPairs s 
+    in fmap (find sfilter) getAllKeySets
+
+getKeySetByInviteKey :: InviteKey -> Query KeyStore (Maybe KeySet)
+getKeySetByInviteKey ref = 
+    let sfilter s = isJust $ find (\p -> kp_inviteKey p == ref) $ ks_keyPairs s 
     in fmap (find sfilter) getAllKeySets
 
 fetchKey :: RefKey -> Update KeyStore InviteKey
@@ -344,7 +373,7 @@ getUserKeySets u = do
 $(mkMethods ''KeyStore ['createKeySet, 'getKeySet, 'isKeysetsInviteSite
                        ,'isKeysetsRefSite ,'getInviteKeysFromSet
                        ,'getRefKeysFromSet, 'fetchKey, 'getUserKeySets
-                       ,'getKeyPairByRefKey])
+                       ,'getKeyPairByRefKey, 'getKeyPairByInviteKey])
 
 
 fetchkey_page :: Html
@@ -416,8 +445,8 @@ refSite_getkeys name' = do
                      ok $ toResponse $ concat keys' else
                   unauthorized $ toResponse "you are not allowed to receive invite keys"
 
-manager_keypairinfo :: String -> ServerPart Response
-manager_keypairinfo input' = do
+manager_keypairinfo_r :: String -> ServerPart Response
+manager_keypairinfo_r input' = do
   let input = drop 1 input'
   let refkey' = parse refKeyParser input input
   case refkey' of
@@ -435,6 +464,26 @@ manager_keypairinfo input' = do
                               show inv ++ "," ++ show co ++ "\n"
                    Nothing -> ok $ toResponse $ 
                               show inv ++ ",\n"
+
+manager_keypairinfo_i :: String -> ServerPart Response
+manager_keypairinfo_i input' = do
+  let input = drop 1 input'
+  let invkey' = parse inviteKeyParser input input
+  case invkey' of
+    Left e -> fail $ show e
+    Right invkey -> 
+        do manager <- fmap fromJust getCurrentUser
+           keypair' <- query $ GetKeyPairByInviteKey manager invkey
+           case keypair' of
+             Nothing -> fail $ "unable to find invite key: " ++ show invkey
+             Just kp -> do 
+                 let ref = kp_refKey kp
+                 let co' = kp_checkedOut kp
+                 case co' of
+                   Just co -> ok $ toResponse $ 
+                              show ref ++ "," ++ show co ++ "\n"
+                   Nothing -> ok $ toResponse $ 
+                              show ref ++ ",\n"
                               
 
 manager_createkeyset_post :: ServerPart Response
