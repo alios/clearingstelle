@@ -9,6 +9,7 @@ import System.Exit
 import System.Console.GetOpt
     
 import Control.Monad
+import Control.Monad.Trans
 import Control.Concurrent
 import Happstack.Server
 import Happstack.Server.SimpleHTTP
@@ -18,15 +19,21 @@ import ClearingStelle.Data
 import Network.Socket
 import Network.BSD
 
-server_part :: ServerPart Response
-server_part = 
+--server_part :: ServerPart Response
+server_part txCtrl = 
     msum [ dir "admin" $ admin_part
          , dir "manager" $ manager_part
          , dir "invitesite" $ inviteSite_part
          , dir "refsite" $ refSite_part
          , dir "clear" $ methodSP POST $ fetchkey_post
+         , dir "cp" $ checkpoint txCtrl
+
          , methodSP GET $ movedPermanently ("/static/clearing.html") (toResponse "")
          ]
+
+checkpoint txCtrl = do
+  liftIO $ createCheckpoint txCtrl
+  ok $  toResponse "checkpoint created"
 
 admin_part = 
     roleAuth Admin $ msum [ dir "adduser" $ 
@@ -67,7 +74,7 @@ clearingstelle = do
   listen s 10
 
   txCtrl <- startSystemState clearingStelleState 
-  tid <- forkIO $ simpleHTTPWithSocket s conf server_part
+  tid <- forkIO $ simpleHTTPWithSocket s conf (server_part txCtrl)
   waitForTermination
   createCheckpoint txCtrl
   killThread tid
