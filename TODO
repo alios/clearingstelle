@@ -1,0 +1,8 @@
+- template mechanism
+- server conf (port, datadir, templatedir)
+- data import / export
+- web interfaces
+- quickcheck
+- simplify deps (time, random)
+- captcha
+
