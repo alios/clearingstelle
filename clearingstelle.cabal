@@ -7,7 +7,7 @@ Name:                clearingstelle
 -- The package version. See the Haskell package versioning policy
 -- (http://www.haskell.org/haskellwiki/Package_versioning_policy) for
 -- standards guiding when and how versions should be incremented.
-Version:             0.4
+Version:             2.0
 
 -- A short (one-line) description of the package.
 Synopsis: A secure token clearing server
@@ -35,7 +35,7 @@ Maintainer:          alios@alios.org
 -- Copyright:           
 
 -- Stability of the pakcage (experimental, provisional, stable...)
-Stability:           Provisional
+Stability:           stable
 
 Category:            Database
 
@@ -51,10 +51,11 @@ Cabal-version:       >=1.2
 
 Executable clearingstelle
   -- .hs or .lhs file containing the Main module.
-  Main-is: ClearingStelle.hs            
-  
+  Main-is: ClearingStelle.hs
+
   -- Packages needed in order to build this package.
-  Build-depends: base >= 4, mtl, containers, network > 2.2, parsec < 3, bytestring, happstack-data >= 0.5, happstack-state >= 0.5, happstack-server >= 0.5, happstack-util >= 0.5, xhtml > 3000, time >= 1.2, syb, random, hslogger, QuickCheck >= 2	
+  Build-depends: base >= 4, old-time, mtl, containers, network > 2.2, parsec < 3, bytestring, happstack-data >= 0.5, happstack-state >= 0.5, happstack-server >= 0.5, happstack-util >= 0.5, syb, random, QuickCheck >= 2	
+  
   
   -- Modules not exported by this package.
   -- Other-modules:       
