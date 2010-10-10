@@ -3,8 +3,8 @@ StandaloneDeriving,
 DeriveDataTypeable,
 Generics #-}
 
-module ClearingStelle.KeyPairs (Identity, KeyPair
-                               , mkKeyPair, checkoutKeyPair, disableKeyPair
+module ClearingStelle.KeyPairs (Identity, Key, KeyPair, randomKey
+                               ,mkKeyPair, checkoutKeyPair, disableKeyPair
                                ,keyPairDisabled, keyPairCheckedOut) where
 
 import System.Random
@@ -24,6 +24,10 @@ $(deriveSerialize ''ClockTime)
 
 type Identity = String
 
+
+class Key k where
+  randomKey :: IO k
+
 data KeyPairEventT = Create | Checkout | Disable
                    deriving (Eq, Show, Typeable, Data)
 instance Version KeyPairEventT
@@ -35,14 +39,14 @@ data KeyPairEvent = KeyPairEvent KeyPairEventT ClockTime Identity
 instance Version KeyPairEvent
 $(deriveSerialize ''KeyPairEvent)
                            
-newtype (Bounded a, Bounded b, Random a, Random b) =>
+newtype (Key a, Key b) =>
         KeyPair a b = KeyPair (Integer, a, b, [KeyPairEvent])
                     deriving (Eq, Data, Typeable, Show)
 instance Version (KeyPair a b)
 $(deriveSerialize ''KeyPair)
 
 
-keyPairEvent :: (Bounded a, Bounded b, Random a, Random b) =>
+keyPairEvent :: (Key a, Key b) =>
                      KeyPairEventT -> KeyPair a b -> Bool
 keyPairEvent _ (KeyPair (id, _, _, [])) =
                         error $ "KeyPair with id " ++ show id
@@ -55,25 +59,25 @@ keyPairEvent e (KeyPair (_, _, _, es)) =
 --
 -- keyPairCheckedOut returns true if KeyPair already has been checked out
 --
-keyPairCheckedOut :: (Bounded a, Bounded b, Random a, Random b) =>
+keyPairCheckedOut :: (Key a, Key b) =>
                      KeyPair a b -> Bool
 keyPairCheckedOut = keyPairEvent Checkout
 
 --
 -- keyPairDisabled returns true if KeyPair has been disabled
 --
-keyPairDisabled :: (Bounded a, Bounded b, Random a, Random b) =>
+keyPairDisabled :: (Key a, Key b) =>
                      KeyPair a b -> Bool
 keyPairDisabled = keyPairEvent Disable
 
 --
 -- mkKeyPair creates a new KeyPair with Identity i and the key pair id
 --
-mkKeyPair :: (Bounded a, Bounded b, Random a, Random b) =>
+mkKeyPair :: (Key a, Key b) =>
              Identity -> Integer -> IO (KeyPair a b)
 mkKeyPair i id = do
-  a <- getStdRandom (randomR (minBound, maxBound))
-  b <- getStdRandom (randomR (minBound, maxBound))
+  a <- randomKey
+  b <- randomKey
   t <- getClockTime
   return $ KeyPair (id, a, b, [KeyPairEvent Create t i])
 
@@ -81,7 +85,7 @@ mkKeyPair i id = do
 --
 -- disableKeyPair disables a keypair with identity i
 -- multiple calls of disableKeyPair on the same keyapir are allowed
-disableKeyPair :: (Bounded a, Bounded b, Random a, Random b) =>
+disableKeyPair :: (Key a, Key b) =>
                   Identity -> KeyPair a b -> IO (KeyPair a b)
 disableKeyPair i (KeyPair (id, a, b, es)) = do
   t <- getClockTime
@@ -91,7 +95,7 @@ disableKeyPair i (KeyPair (id, a, b, es)) = do
 -- checkoutKeyPair does a checkout
 -- fails on disabled an already checked out keys
 --
-checkoutKeyPair :: (Bounded a, Bounded b, Random a, Random b) =>
+checkoutKeyPair :: (Key a, Key b) =>
                   Identity -> KeyPair a b -> IO (KeyPair a b)
 checkoutKeyPair i kp@(KeyPair (id, a, b, es)) = do
   t <- getClockTime
@@ -102,6 +106,3 @@ checkoutKeyPair i kp@(KeyPair (id, a, b, es)) = do
                    " has already been checked out."
          else return $ KeyPair (id, a, b, (KeyPairEvent Checkout t i) : es )
 
--- this function is for testing only
-mkIntKeyPair :: Identity -> Integer -> IO (KeyPair Int Int)
-mkIntKeyPair i id = mkKeyPair i id

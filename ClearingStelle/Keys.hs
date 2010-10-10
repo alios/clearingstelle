@@ -14,6 +14,8 @@ import Data.List
 import Text.ParserCombinators.Parsec hiding (getState)
 import Happstack.Data
 
+import ClearingStelle.KeyPairs
+
 refKeyTupelLen = 4
 inviteKeyTupelLen = 5
 
@@ -150,4 +152,16 @@ randomRefKey = do
   d <- randomTupel refKeyTupelLen
   e <- randomTupel refKeyTupelLen  
   return $ RefKey (a,b,c,d,e)
+
+instance Key RefKey where 
+  randomKey = randomRefKey
+
+instance Key InviteKey where
+  randomKey = randomInviteKey
+  
+-- test function
+mkKeyKeyPair :: Identity -> Integer -> IO (KeyPair RefKey InviteKey)
+mkKeyKeyPair = mkKeyPair
+
+
 
