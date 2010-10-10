@@ -1,6 +1,7 @@
 module Main where
 
-import ClearingStelle.Server
+import ClearingStelle.Keys
+import ClearingStelle.KeyPairs
 
-main = clearingstelle
+main = return ()
 
