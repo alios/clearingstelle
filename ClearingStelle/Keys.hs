@@ -3,7 +3,8 @@
              DeriveDataTypeable, 
              Generics #-}
 
-module ClearingStelle.Keys where
+module ClearingStelle.Keys (InviteKey, RefKey
+                           ,refKeyParser, inviteKeyParser) where
 
 import System.Random
 import Data.Typeable
