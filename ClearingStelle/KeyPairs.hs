@@ -1,10 +1,13 @@
-{-# LANGUAGE TemplateHaskell,
-StandaloneDeriving,
-DeriveDataTypeable,
-Generics #-}
+{-# LANGUAGE FlexibleInstances,
+             TemplateHaskell,
+             StandaloneDeriving,
+             DeriveDataTypeable,
+             UndecidableInstances,
+             Generics #-}
 
 module ClearingStelle.KeyPairs (Identity, Key, KeyPair, randomKey
                                ,mkKeyPair, checkoutKeyPair, disableKeyPair
+                               ,keyParser, keyA, keyB
                                ,keyPairDisabled, keyPairCheckedOut) where
 
 import System.Random
@@ -15,7 +18,8 @@ import Data.List
 import Data.Typeable
 import Data.Data
 import Happstack.Data
-                           
+import Text.ParserCombinators.ReadP                           
+
 deriving instance Data ClockTime
 deriving instance Typeable ClockTime
 instance Version ClockTime
@@ -25,9 +29,13 @@ $(deriveSerialize ''ClockTime)
 type Identity = String
 
 
-class Key k where
+class (Show k) => Key k where
   randomKey :: IO k
+  keyParser :: ReadP k
 
+instance (Key k) => Read k where
+  readsPrec _ = readP_to_S $ keyParser
+               
 data KeyPairEventT = Create | Checkout | Disable
                    deriving (Eq, Show, Typeable, Data)
 instance Version KeyPairEventT
@@ -106,3 +114,15 @@ checkoutKeyPair i kp@(KeyPair (id, a, b, es)) = do
                    " has already been checked out."
          else return $ KeyPair (id, a, b, (KeyPairEvent Checkout t i) : es )
 
+
+--
+-- get key a
+--
+keyA :: (Key a, Key b) => KeyPair a b -> a
+keyA (KeyPair (_, a, _, _)) = a
+
+--
+-- get key b
+--
+keyB :: (Key a, Key b) => KeyPair a b -> b
+keyB (KeyPair (_, _, b, _)) = b

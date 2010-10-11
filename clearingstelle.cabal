@@ -21,7 +21,9 @@ Library
     ClearingStelle.Keys
     ClearingStelle.KeyPairs
   Extensions: 
-    TemplateHaskell, StandaloneDeriving, DeriveDataTypeable, Generics
+    TemplateHaskell, StandaloneDeriving, DeriveDataTypeable, Generics.
+    GADTs, FlexibleInstances, UndecidableInstances
+
   Build-depends: 
    base >= 4, Crypto >= 4.2, old-time, mtl, containers, network > 2.2, 
    parsec < 3, happstack-data >= 0.5, happstack-state >= 0.5, 

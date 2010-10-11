@@ -12,7 +12,7 @@ import Data.Data
 import Data.Char        
 import Data.Maybe
 import Data.List
-import Text.ParserCombinators.Parsec hiding (getState)
+import Text.ParserCombinators.ReadP
 import Happstack.Data
 
 import ClearingStelle.KeyPairs
@@ -94,7 +94,7 @@ validRefKey (RefKey (a,b,c,d,e)) =
 --
 -- Parser
 --
-validCharParser = oneOf validChars
+validCharParser = satisfy validChar
 refTupelParser = count refKeyTupelLen validCharParser
 inviteTupelParser = count inviteKeyTupelLen validCharParser
 
@@ -143,7 +143,10 @@ randomInviteKey = do
   b <- randomTupel inviteKeyTupelLen
   c <- randomTupel inviteKeyTupelLen
   d <- randomTupel inviteKeyTupelLen
-  return $ InviteKey (a,b,c,d)
+  let key = InviteKey (a,b,c,d) 
+  if (validInviteKey key) 
+    then return $ key
+    else fail $ show key ++ " is not a valid inviteKey"
   
 randomRefKey :: IO RefKey
 randomRefKey = do
@@ -152,13 +155,18 @@ randomRefKey = do
   c <- randomTupel refKeyTupelLen
   d <- randomTupel refKeyTupelLen
   e <- randomTupel refKeyTupelLen  
-  return $ RefKey (a,b,c,d,e)
+  let key = RefKey (a,b,c,d,e) 
+  if (validRefKey key) 
+    then return $ key
+    else fail $ show key ++ " is not a valid refKey"
 
 instance Key RefKey where 
   randomKey = randomRefKey
-
+  keyParser = refKeyParser
+  
 instance Key InviteKey where
   randomKey = randomInviteKey
+  keyParser = inviteKeyParser
   
 -- test function
 mkKeyKeyPair :: Identity -> Integer -> IO (KeyPair RefKey InviteKey)
