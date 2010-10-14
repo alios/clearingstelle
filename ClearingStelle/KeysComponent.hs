@@ -2,10 +2,10 @@
              StandaloneDeriving, 
              DeriveDataTypeable, 
              Generics, 
-             TypeFamilies #-}
+             TypeFamilies,
+             MultiParamTypeClasses #-}
 
-module ClearingStelle.KeysComponent ( nextKeyId, createKPs
-                                    , disableKP, checkoutKP
+module ClearingStelle.KeysComponent ( KeyPairsComponentC(..)
                                     , findByKeyA, findByKeyB ) where
 
 import Data.List (find)
@@ -32,6 +32,32 @@ instance (Key a, Key b) => Component (KeysComponent a b) where
   type Dependencies (KeysComponent a b) = End
   initialValue = KeysComponent 0 []
   
+class (Key a, Key b) => KeyPairsComponentC a b where
+  createKPs :: Identity -> Integer -> Update (KeysComponent a b) ()
+  createKPs id n = do
+    next_id <- runQuery nextKeyId
+    old_ks <- fmap keys getState
+    ks <- unsafeIOToEv $ mkKeyPairs old_ks id next_id n
+    putState $ KeysComponent (next_id + n) (ks ++ old_ks)
+  
+  disableKP :: Identity -> a -> Update (KeysComponent a b) ()
+  disableKP id a = do
+    mkp <- runQuery $ findByKeyA a
+    case mkp of
+      Nothing -> fail $ "unable to find Key with key a " ++ show a 
+      Just kp -> do 
+        kp' <- unsafeIOToEv $  disableKeyPair id kp
+        updateKey kp'
+        
+  checkoutKP :: Identity -> a -> Update (KeysComponent a b) b
+  checkoutKP id a = do
+    mkp <- runQuery $ findByKeyA a
+    case mkp of
+      Nothing -> fail $ "unable to find Key with key a " ++ show a 
+      Just kp -> do 
+        kp' <- unsafeIOToEv $  checkoutKeyPair id kp
+        updateKey kp'
+        return $ keyB kp'
 
 nextKeyId :: (Key a, Key b) => Query (KeysComponent a b) Integer
 nextKeyId = fmap next_id askState
@@ -58,36 +84,6 @@ updateKey kp = do
     then putState $ KeysComponent nid (kp :keys')
     else fail $ "unable to find KeyPair with id " ++ (show $ keyId kp)
 
-createKPs :: (Key a, Key b) =>
-                  Identity -> Integer -> Update (KeysComponent a b) Integer
-createKPs id n = do
-  next_id <- runQuery nextKeyId
-  old_ks <- fmap keys getState
-  ks <- unsafeIOToEv $ mkKeyPairs old_ks id next_id n
-  putState $ KeysComponent (next_id + n) (ks ++ old_ks)
-  return n
-
-disableKP :: (Key a, Key b) =>
-                  Identity -> a -> Update (KeysComponent a b) ()
-disableKP id a = do
-  mkp <- runQuery $ findByKeyA a
-  case mkp of
-    Nothing -> fail $ "unable to find Key with key a " ++ show a 
-    Just kp -> do 
-      kp' <- unsafeIOToEv $  disableKeyPair id kp
-      updateKey kp'
-
-
-checkoutKP :: (Key a, Key b) =>
-                  Identity -> a -> Update (KeysComponent a b) b
-checkoutKP id a = do
-  mkp <- runQuery $ findByKeyA a
-  case mkp of
-    Nothing -> fail $ "unable to find Key with key a " ++ show a 
-    Just kp -> do 
-      kp' <- unsafeIOToEv $  checkoutKeyPair id kp
-      updateKey kp'
-      return $ keyB kp'
 
 
 
