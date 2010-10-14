@@ -19,6 +19,8 @@ import ClearingStelle.KeyPairs
 
 refKeyTupelLen = 4
 inviteKeyTupelLen = 5
+refKeyTupelN = 5
+inviteKeyTupelN = 4
 
 --
 -- Tupel
@@ -81,15 +83,15 @@ validTupel len (Tupel t) =
   (length t == len) &&
   (and $ map validChar t)
 
-validKey len ts =
-  (length ts == len) &&
-  (and $ map (validTupel len) ts)
+validKey tupelLen tupelN ts =
+  (length ts == tupelN) &&
+  (and $ map (validTupel tupelLen) ts)
   
 validInviteKey (InviteKey (a,b,c,d)) = 
-  validKey inviteKeyTupelLen [a,b,c,d]
+  validKey inviteKeyTupelLen inviteKeyTupelN [a,b,c,d]
 
 validRefKey (RefKey (a,b,c,d,e)) = 
-  validKey refKeyTupelLen [a,b,c,d,e]
+  validKey refKeyTupelLen refKeyTupelN [a,b,c,d,e]
 
 --
 -- Parser
@@ -168,9 +170,3 @@ instance Key InviteKey where
   randomKey = randomInviteKey
   keyParser = inviteKeyParser
   
--- test function
-mkKeyKeyPair :: Identity -> Integer -> IO (KeyPair RefKey InviteKey)
-mkKeyKeyPair = mkKeyPair
-
-
-

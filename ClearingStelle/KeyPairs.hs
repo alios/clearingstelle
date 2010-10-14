@@ -3,12 +3,13 @@
              StandaloneDeriving,
              DeriveDataTypeable,
              UndecidableInstances,
+             MultiParamTypeClasses,
              Generics #-}
 
-module ClearingStelle.KeyPairs (Identity, Key, KeyPair, randomKey
+module ClearingStelle.KeyPairs (Identity, Key, KeyPairT, randomKey, keyParser
                                ,mkKeyPair, checkoutKeyPair, disableKeyPair
-                               ,keyParser, keyA, keyB
-                               ,keyPairDisabled, keyPairCheckedOut) where
+                               ,keyA, keyB, keyId, keyPairState
+                               ,mkKeyPairs, keysUsed) where
 
 import System.Random
 import System.Time
@@ -25,104 +26,119 @@ deriving instance Typeable ClockTime
 instance Version ClockTime
 $(deriveSerialize ''ClockTime)
  
-
 type Identity = String
 
-
-class (Show k) => Key k where
+class (Show k, Eq k, Serialize k) => Key k where
   randomKey :: IO k
   keyParser :: ReadP k
 
 instance (Key k) => Read k where
   readsPrec _ = readP_to_S $ keyParser
                
-data KeyPairEventT = Create | Checkout | Disable
+data KeyPairState = Created | Checkedout | Disabled
                    deriving (Eq, Show, Typeable, Data)
-instance Version KeyPairEventT
-$(deriveSerialize ''KeyPairEventT)
+instance Version KeyPairState
+$(deriveSerialize ''KeyPairState)
                             
 
-data KeyPairEvent = KeyPairEvent KeyPairEventT ClockTime Identity
+data KeyPairEvent = KeyPairEvent KeyPairState ClockTime Identity
                      deriving (Data, Typeable, Eq, Show)
+                              
 instance Version KeyPairEvent
 $(deriveSerialize ''KeyPairEvent)
                            
 newtype (Key a, Key b) =>
-        KeyPair a b = KeyPair (Integer, a, b, [KeyPairEvent])
+        KeyPairT a b = KeyPair (Integer, a, b, [KeyPairEvent])
                     deriving (Eq, Data, Typeable, Show)
-instance Version (KeyPair a b)
-$(deriveSerialize ''KeyPair)
-
+instance Version (KeyPairT a b)
+$(deriveSerialize ''KeyPairT)
 
 keyPairEvent :: (Key a, Key b) =>
-                     KeyPairEventT -> KeyPair a b -> Bool
+                     KeyPairState -> KeyPairT a b -> Bool
 keyPairEvent _ (KeyPair (id, _, _, [])) =
-                        error $ "KeyPair with id " ++ show id
+                        error $ "KeyPairT with id " ++ show id
                         ++ " has empty event queue"
 keyPairEvent e (KeyPair (_, _, _, es)) =
   isJust $ find (\(KeyPairEvent t _ _) -> t == e) es
 
+keyPairState :: (Key a, Key b) =>
+                     KeyPairT a b -> KeyPairState
+keyPairState kp
+  | (keyPairEvent Disabled kp) = Disabled
+  | (keyPairEvent Checkedout kp) = Checkedout
+  | otherwise = Created
 
-
---
--- keyPairCheckedOut returns true if KeyPair already has been checked out
---
-keyPairCheckedOut :: (Key a, Key b) =>
-                     KeyPair a b -> Bool
-keyPairCheckedOut = keyPairEvent Checkout
-
---
--- keyPairDisabled returns true if KeyPair has been disabled
---
-keyPairDisabled :: (Key a, Key b) =>
-                     KeyPair a b -> Bool
-keyPairDisabled = keyPairEvent Disable
-
---
--- mkKeyPair creates a new KeyPair with Identity i and the key pair id
---
+-- | creates a new KeyPairT with Identity i and the key pair id
 mkKeyPair :: (Key a, Key b) =>
-             Identity -> Integer -> IO (KeyPair a b)
+             Identity -> Integer -> IO (KeyPairT a b)
 mkKeyPair i id = do
   a <- randomKey
   b <- randomKey
   t <- getClockTime
-  return $ KeyPair (id, a, b, [KeyPairEvent Create t i])
+  return $ KeyPair (id, a, b, [KeyPairEvent Created t i])
 
 
---
--- disableKeyPair disables a keypair with identity i
+
+-- | make a list of n random KeyPairs starting from id start.
+-- the as and the bs are unique across the returned list
+mkKeyPairs :: (Key a, Key b) => 
+              [KeyPairT a b] -> Identity -> Integer -> Integer -> 
+              IO [KeyPairT a b]
+mkKeyPairs = mkKeyPairs' [] 
+  where mkKeyPairs' new old i start n
+          | (n <= 0) = do return new
+          | otherwise = do
+            key <- mkKeyPair i start
+            if (keysUsed (new ++ old) key)
+              then mkKeyPairs' new old i start n
+              else mkKeyPairs' (new ++ [key]) old i (succ start) (pred n)  
+            
+
+-- | disableKeyPair disables a keypair with identity i
 -- multiple calls of disableKeyPair on the same keyapir are allowed
 disableKeyPair :: (Key a, Key b) =>
-                  Identity -> KeyPair a b -> IO (KeyPair a b)
+                  Identity -> KeyPairT a b -> IO (KeyPairT a b)
 disableKeyPair i (KeyPair (id, a, b, es)) = do
   t <- getClockTime
-  return $ KeyPair (id, a, b, (KeyPairEvent Disable t i) : es )
+  return $ KeyPair (id, a, b, (KeyPairEvent Disabled t i) : es )
   
---
--- checkoutKeyPair does a checkout
+
+-- | checkoutKeyPair does a checkout
 -- fails on disabled an already checked out keys
---
 checkoutKeyPair :: (Key a, Key b) =>
-                  Identity -> KeyPair a b -> IO (KeyPair a b)
+                  Identity -> KeyPairT a b -> IO (KeyPairT a b)
 checkoutKeyPair i kp@(KeyPair (id, a, b, es)) = do
   t <- getClockTime
-  let d = keyPairDisabled kp
-  let c = keyPairCheckedOut kp
-  if d then fail $ "key pair " ++ show id ++ " is disabled. can not checkout"
-    else if c then fail $ "key pair " ++ show id ++
-                   " has already been checked out."
-         else return $ KeyPair (id, a, b, (KeyPairEvent Checkout t i) : es )
+  let state = keyPairState kp
+  case state of 
+    Disabled -> 
+      fail $ "key pair " ++ show id ++ " is disabled. can not checkout"
+    Checkedout -> 
+      fail $ "key pair " ++ show id ++ " has already been checked out."
+    Created -> 
+      return $ KeyPair (id, a, b, (KeyPairEvent Checkedout t i) : es )
 
 
---
--- get key a
---
-keyA :: (Key a, Key b) => KeyPair a b -> a
+-- | get key a
+keyA :: (Key a, Key b) => KeyPairT a b -> a
 keyA (KeyPair (_, a, _, _)) = a
 
---
--- get key b
---
-keyB :: (Key a, Key b) => KeyPair a b -> b
+-- | get key b
+keyB :: (Key a, Key b) => KeyPairT a b -> b
 keyB (KeyPair (_, _, b, _)) = b
+
+-- | get key id
+keyId ::(Key a, Key b) => KeyPairT a b -> Integer
+keyId (KeyPair (id, _, _, _)) = id
+
+-- | returns if either the keyA or the keyB or the id of the given KeyPairT 
+-- exists in the given list of keyPairs
+keysUsed :: (Key a, Key b) => [KeyPairT a b] -> KeyPairT a b -> Bool 
+keysUsed [] _ = False
+keysUsed (k:ks) x = 
+  let ka = keyA k == keyA x
+      kb = keyB k == keyB x
+      ki = keyId k == keyId x
+      rst = keysUsed ks x
+  in ka || kb || ki || rst
+     

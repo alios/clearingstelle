@@ -20,9 +20,12 @@ Library
   Exposed-Modules:
     ClearingStelle.Keys
     ClearingStelle.KeyPairs
+    ClearingStelle.KeysComponent
+
   Extensions: 
-    TemplateHaskell, StandaloneDeriving, DeriveDataTypeable, Generics.
-    GADTs, FlexibleInstances, UndecidableInstances
+    TemplateHaskell, StandaloneDeriving, DeriveDataTypeable, Generics,
+    GADTs, FlexibleInstances, UndecidableInstances, MultiParamTypeClasses,
+    TypeFamilies
 
   Build-depends: 
    base >= 4, Crypto >= 4.2, old-time, mtl, containers, network > 2.2, 
