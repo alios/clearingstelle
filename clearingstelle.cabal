@@ -21,11 +21,6 @@ source-repository head
   location: git://git@github.com:alios/clearingstelle.git
   branch: master
 
-source-repository this
-  type:     git
-  location: git://git@github.com:alios/clearingstelle.git
-  branch: rel-1-0
-
 Executable clearingstelle
   Main-is: ClearingStelle.hs            
   Build-depends: base >= 4, mtl, containers, network > 2.2, parsec < 3, bytestring, happstack-data >= 0.5, happstack-state >= 0.5, happstack-server >= 0.5, happstack-util >= 0.5, xhtml > 3000, time >= 1.2, syb, random, hslogger, QuickCheck >= 2	

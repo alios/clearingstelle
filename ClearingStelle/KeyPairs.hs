@@ -8,19 +8,15 @@ module ClearingStelle.KeyPairs (Identity, KeyPair
                                ,keyPairDisabled, keyPairCheckedOut) where
 
 import System.Random
-import System.Time
 
 import Data.Maybe
 import Data.List
 import Data.Typeable
 import Data.Data
 import Happstack.Data
+
+import Data.Time.Clock
                            
-deriving instance Data ClockTime
-deriving instance Typeable ClockTime 
-instance Version ClockTime
-$(deriveSerialize ''ClockTime)  
- 
 
 type Identity = String
 
@@ -30,7 +26,7 @@ instance Version KeyPairEventT
 $(deriveSerialize ''KeyPairEventT)  
                             
 
-data KeyPairEvent = KeyPairEvent KeyPairEventT ClockTime Identity
+data KeyPairEvent = KeyPairEvent KeyPairEventT UTCTime Identity
                      deriving (Data, Typeable, Eq, Show)
 instance Version KeyPairEvent
 $(deriveSerialize ''KeyPairEvent)
@@ -74,7 +70,7 @@ mkKeyPair :: (Bounded a, Bounded b, Random a, Random b) =>
 mkKeyPair i id = do  
   a <- getStdRandom (randomR (minBound, maxBound))
   b <- getStdRandom (randomR (minBound, maxBound))
-  t <- getClockTime
+  t <- getCurrentTime
   return $ KeyPair (id, a, b, [KeyPairEvent Create t i])
 
 
@@ -84,7 +80,7 @@ mkKeyPair i id = do
 disableKeyPair :: (Bounded a, Bounded b, Random a, Random b) => 
                   Identity -> KeyPair a b -> IO (KeyPair a b)
 disableKeyPair i (KeyPair (id, a, b, es)) = do
-  t <- getClockTime
+  t <- getCurrentTime
   return $ KeyPair (id, a, b, (KeyPairEvent Disable t i) : es )
   
 --
@@ -94,7 +90,7 @@ disableKeyPair i (KeyPair (id, a, b, es)) = do
 checkoutKeyPair :: (Bounded a, Bounded b, Random a, Random b) => 
                   Identity -> KeyPair a b -> IO (KeyPair a b)
 checkoutKeyPair i kp@(KeyPair (id, a, b, es)) = do
-  t <- getClockTime
+  t <- getCurrentTime
   let d = keyPairDisabled kp
   let c = keyPairCheckedOut kp
   if d then fail $ "key pair " ++ show id ++ " is disabled. can not checkout"
