@@ -1,0 +1,25 @@
+!!!
+<html
+  <head	
+    <title>Piratenpartei Deutschland - Clearingstelle
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta http-equiv="expires" content="0" />
+    <meta http-equiv="cache-control" content="no-cache" />
+    <meta http-equiv="pragma" content="no-cache" />
+    ^{pageHead pc}
+  <body
+    ^{pageBody pc}			      
+    <div #footer
+      <p
+        <a href="@{ImpressumR}">Impressum 
+        - 
+        <a href="https://lqfb.piratenpartei.de/pp/static/doc/useterms.html"> Nutzungsbedingungen 
+        - 
+        <a href="https://lqfb.piratenpartei.de/pp/static/doc/privacy.html"> Datenschutzerklärung 
+        - 
+        <a href="http://wiki.piratenpartei.de/LQPP/Betriebsdoku"> Betriebsdokumentation 
+        - 
+        <a href="https://lqfb-clearingstelle.piratenpartei.de/"> Hauptseite 
+		      
+ 
+			

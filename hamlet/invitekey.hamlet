@@ -1,0 +1,8 @@
+<div #invitekey
+  <h1>Piratenpartei Deutschland - Clearingstelle
+  <h2>Dein Einladungscode wird dir hier angezeigt:
+  <em> #{invKey} 
+  <p
+    Bitte kopiere oder notiere ihn dir sofort, um dir dann damit auf 
+    <a href="https://lqfb.piratenpartei.de/"> https://lqfb.piratenpartei.de/ 
+    einen Account anzulegen.

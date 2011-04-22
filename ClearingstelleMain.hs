@@ -1,4 +1,6 @@
-Copyright (c)2011, Markus Barenhoff <alios@alios.org> 
+{-# LANGUAGE CPP #-}
+{-
+Copyright (c)2011, Markus Barenhoff <alios@alios.org>
 
 All rights reserved.
 
@@ -13,7 +15,7 @@ modification, are permitted provided that the following conditions are met:
       disclaimer in the documentation and/or other materials provided
       with the distribution.
 
-    * Neither the name of  nor the names of other
+    * Neither the name of Markus Barenhoff nor the names of other
       contributors may be used to endorse or promote products derived
       from this software without specific prior written permission.
 
@@ -28,3 +30,20 @@ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+-}
+
+module Main (main) where
+
+import Yesod
+import Yesod.Helpers.Static (static)
+import Clearingstelle
+
+#ifdef PRODUCTION
+warpServer = warp
+#else
+warpServer = warpDebug
+#endif
+
+main :: IO ()
+main = warpServer 3000 $ clearingstelle
+  where clearingstelle = CS  (static "static") 
