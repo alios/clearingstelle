@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-
 Copyright (c)2011, Markus Barenhoff <alios@alios.org>
 
@@ -34,19 +33,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 module Main (main) where
 
-import Yesod
 import Yesod.Helpers.Static (static)
-import Database.Persist.Sqlite
 import Settings
 import Clearingstelle
-import KeysDB
-import Database.Persist.Sqlite
-
-#ifdef PRODUCTION
-warpServer = warp
-#else
-warpServer = warpDebug
-#endif
+import KeysDB (migrateAll)
+import Database.Persist.Sqlite (runMigration)
 
 main :: IO ()
 main = withConnectionPool $ \p -> do

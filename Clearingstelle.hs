@@ -1,9 +1,3 @@
-{-# LANGUAGE TypeFamilies, 
-             QuasiQuotes, 
-             TemplateHaskell,
-             OverloadedStrings,
-             MultiParamTypeClasses #-}
-
 {-
 Copyright (c)2011, Markus Barenhoff <alios@alios.org>
 
@@ -37,15 +31,19 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -}
 
+{-# LANGUAGE TypeFamilies, 
+             QuasiQuotes, 
+             TemplateHaskell,
+             OverloadedStrings,
+             MultiParamTypeClasses #-}
+
 module Clearingstelle (CS (..)) where
 
 import Yesod
 import Yesod.Helpers.Static
-import Yesod.Request
 import qualified Data.Text as T
-import Control.Applicative 
+import Control.Applicative.Error
 import Settings 
-import Keys
 import KeysDB
 import Database.Persist.GenericSql
 
@@ -64,9 +62,12 @@ instance YesodPersist CS where
   type YesodDB CS = SqlPersist
   runDB db =  liftIOHandler $ fmap connPool getYesod >>= runConnectionPool db
   
+getImpressumR :: GHandler sub CS RepHtml
 getImpressumR = defaultLayout $ addHamlet $(hamletFile "impressum")
+getClearingR :: GHandler sub CS RepHtml
 getClearingR = defaultLayout $ addHamlet $(hamletFile "clearing")
 
+postCheckoutR :: GHandler CS CS RepHtml
 postCheckoutR = do
   refKey' <- lookupPostParam refKeyParam
   case (refKey') of 
@@ -75,7 +76,8 @@ postCheckoutR = do
       $(logInfo) errMsg
       invalidArgs [errMsg]    
     Just refKey -> do
-      resInvKey <- runDB $ checkoutKey $ read $ T.unpack refKey
+      let ik = maybeRead $ T.unpack refKey
+      resInvKey <- maybe (do return Nothing) (\ik' -> runDB $ checkoutKey ik') ik 
       case (resInvKey) of
         Nothing -> do
           let errMsg = T.concat [(T.pack "key '"), refKey, (T.pack "' ist not valid")] 
@@ -86,9 +88,6 @@ postCheckoutR = do
           $(logInfo) (T.concat [(T.pack "check out of refKey "), refKey])
           defaultLayout $ addHamlet $(hamletFile "invitekey")
 
-
-validateKey :: T.Text -> Maybe T.Text
-validateKey k = Just $ T.pack "FOOOOOOBAAAAR"
 
 instance Yesod CS where 
   approot _ = "http://localhost:3000"

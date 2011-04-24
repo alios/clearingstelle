@@ -1,6 +1,3 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE TemplateHaskell #-}
-
 {-
 Copyright (c)2011, Markus Barenhoff <alios@alios.org>
 
@@ -34,10 +31,12 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -}
 
-module Settings (hamletFile, cassiusFile, refKeyParam
+{-# LANGUAGE CPP, NoMonomorphismRestriction #-}
+
+module Settings (hamletFile, appRoot, cassiusFile, refKeyParam, warpServer
                 ,withConnectionPool, runConnectionPool) where
 
-import Yesod (MonadControlIO)
+import Yesod
 import qualified Data.Text as T
 import qualified Text.Hamlet as H
 import qualified Text.Cassius as C
@@ -47,6 +46,7 @@ import Database.Persist.Sqlite
 connectionCount :: Int
 connectionCount = 10
 
+connStr :: T.Text
 connStr = T.pack ":memory:"
 
 withConnectionPool :: MonadControlIO m => (ConnectionPool -> m a) -> m a
@@ -61,14 +61,19 @@ refKeyParam = (T.pack "refKey")
 hamletFile :: FilePath -> Q Exp
 cassiusFile :: FilePath -> Q Exp
 
+appRoot :: String
+warpServer :: (Yesod a, YesodDispatch a a) => Int -> a -> IO ()
+
 #ifdef PRODUCTION
+appRoot = "http://localhost:3000"
 hamletFile = H.hamletFile . toHamletFile
 cassiusFile = C.cassiusFile . toCassiusFile
-appRoot = "http://localhost:3000"
+warpServer = warp
 #else
+appRoot = "http://localhost:3000"
 hamletFile = H.hamletFileDebug . toHamletFile
 cassiusFile = C.cassiusFileDebug . toCassiusFile
-appRoot = "http://localhost:3000"
+warpServer = warpDebug
 #endif
 
 toHamletFile :: String -> FilePath

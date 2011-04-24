@@ -29,6 +29,9 @@ executable         clearingstelle
                  , yesod >= 0.8            && < 0.9
                  , yesod-core   >= 0.8     && < 0.9
                  , yesod-static
+                 , persistent >= 0.5
+                 , persistent-template >= 0.5
+                 , persistent-sqlite
                  , wai-extra
                  , directory
                  , bytestring
@@ -37,7 +40,10 @@ executable         clearingstelle
                  , hamlet
                  , web-routes
                  , transformers
+                 , applicative-extras
                  , wai
                  , warp
+                 , random
+                 , time
                  , blaze-builder
     ghc-options:   -Wall -threaded
