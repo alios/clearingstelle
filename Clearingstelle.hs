@@ -44,10 +44,13 @@ import Yesod.Helpers.Static
 import Yesod.Request
 import qualified Data.Text as T
 import Control.Applicative 
-
 import Settings 
+import Keys
+import KeysDB
+import Database.Persist.GenericSql
 
-data CS = CS { csStatic :: Static }
+data CS = CS { csStatic :: Static 
+             , connPool :: ConnectionPool }
 type Handler = GHandler CS CS
 
 mkYesod "CS" [parseRoutes|
@@ -57,6 +60,10 @@ mkYesod "CS" [parseRoutes|
   /static StaticR Static csStatic
 |]
 
+instance YesodPersist CS where
+  type YesodDB CS = SqlPersist
+  runDB db =  liftIOHandler $ fmap connPool getYesod >>= runConnectionPool db
+  
 getImpressumR = defaultLayout $ addHamlet $(hamletFile "impressum")
 getClearingR = defaultLayout $ addHamlet $(hamletFile "clearing")
 
@@ -68,12 +75,14 @@ postCheckoutR = do
       $(logInfo) errMsg
       invalidArgs [errMsg]    
     Just refKey -> do
-      case (validateKey refKey) of
+      resInvKey <- runDB $ checkoutKey $ read $ T.unpack refKey
+      case (resInvKey) of
         Nothing -> do
           let errMsg = T.concat [(T.pack "key '"), refKey, (T.pack "' ist not valid")] 
           $(logInfo) errMsg
           invalidArgs [errMsg]
-        Just invKey -> do
+        Just invKey' -> do
+          let invKey = show invKey'
           $(logInfo) (T.concat [(T.pack "check out of refKey "), refKey])
           defaultLayout $ addHamlet $(hamletFile "invitekey")
 

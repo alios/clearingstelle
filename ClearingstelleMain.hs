@@ -36,7 +36,11 @@ module Main (main) where
 
 import Yesod
 import Yesod.Helpers.Static (static)
+import Database.Persist.Sqlite
+import Settings
 import Clearingstelle
+import KeysDB
+import Database.Persist.Sqlite
 
 #ifdef PRODUCTION
 warpServer = warp
@@ -45,5 +49,7 @@ warpServer = warpDebug
 #endif
 
 main :: IO ()
-main = warpServer 3000 $ clearingstelle
-  where clearingstelle = CS  (static "static") 
+main = withConnectionPool $ \p -> do
+  runConnectionPool (runMigration migrateAll) p
+  warpServer 3000 $ CS  (static "static") p
+  

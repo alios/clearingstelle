@@ -15,24 +15,35 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Monad.IO.Class (MonadIO)
 import Keys
 
-share [mkPersist, mkMigrate "migrateAll"] [persist|
+share2 mkPersist (mkMigrate "migrateAll") [persist|
 KeyPair
-    refkey RefKey Eq
-    invkey InviteKey Eq    
-    created UTCTime default=CURRENT_TIMESTAMP
-    checkedOut UTCTime Maybe Update
-    disabled UTCTime Maybe Update
+  refkey RefKey Eq 
+  invkey InviteKey Eq
+  created UTCTime default=CURRENT_TIMESTAMP
+  checkedOut UTCTime Maybe Eq Update default=Nothing
+  disabled UTCTime Maybe Eq Update default=Nothing
 |]
+
+disableKey :: (PersistBackend m, MonadIO m) => RefKey -> m ()  
+disableKey rk = do
+  t <- liftIO getCurrentTime
+  updateWhere 
+    [KeyPairRefkeyEq rk, KeyPairDisabledEq Nothing] 
+    [KeyPairDisabled $ Just t]
 
 checkoutKey :: (PersistBackend m, MonadIO m) => RefKey -> m (Maybe InviteKey)
 checkoutKey rk = do
-  kp <- selectList [KeyPairRefkeyEq rk] []  1 0
+  kp <- selectList (refKeyAvail rk) [] 1 0
   if (null kp) then return Nothing else do
     t <- liftIO getCurrentTime
-    updateWhere [KeyPairRefkeyEq rk] [KeyPairCheckedOut $ Just t]
+    updateWhere (refKeyAvail rk) [KeyPairCheckedOut $ Just t]
     return $ Just $ keyPairInvkey $ snd $ kp !! 0
-  
-mkKeyPair :: (PersistBackend m, MonadIO m) => m (Key KeyPair)
+  where  
+    refKeyAvail rk = 
+      [ KeyPairRefkeyEq rk, 
+        KeyPairCheckedOutEq Nothing, 
+        KeyPairDisabledEq Nothing]
+
 mkKeyPair = do
   r <- uniqRefKey
   i <- uniqInviteKey

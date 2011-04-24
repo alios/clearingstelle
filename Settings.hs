@@ -34,12 +34,26 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -}
 
-module Settings (hamletFile, cassiusFile, refKeyParam) where
+module Settings (hamletFile, cassiusFile, refKeyParam
+                ,withConnectionPool, runConnectionPool) where
 
+import Yesod (MonadControlIO)
 import qualified Data.Text as T
 import qualified Text.Hamlet as H
 import qualified Text.Cassius as C
 import Language.Haskell.TH.Syntax
+import Database.Persist.Sqlite
+
+connectionCount :: Int
+connectionCount = 10
+
+connStr = T.pack ":memory:"
+
+withConnectionPool :: MonadControlIO m => (ConnectionPool -> m a) -> m a
+withConnectionPool = withSqlitePool connStr connectionCount
+
+runConnectionPool :: MonadControlIO m => SqlPersist m a -> ConnectionPool -> m a
+runConnectionPool = runSqlPool
 
 refKeyParam :: T.Text
 refKeyParam = (T.pack "refKey")
