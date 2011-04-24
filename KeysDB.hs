@@ -15,6 +15,10 @@ import Control.Monad.IO.Class (liftIO)
 import Control.Monad.IO.Class (MonadIO)
 import Keys
 
+derivePersistField "RefKey"
+derivePersistField "InviteKey"
+
+
 share2 mkPersist (mkMigrate "migrateAll") [persist|
 KeyPair
   refkey RefKey Eq 

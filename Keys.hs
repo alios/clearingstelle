@@ -1,8 +1,4 @@
-{-# LANGUAGE TemplateHaskell, 
-             StandaloneDeriving, 
-             DeriveDataTypeable, 
-             Generics,
-             FlexibleContexts #-}
+{-# LANGUAGE DeriveDataTypeable, FlexibleContexts #-}
 
 module Keys where
 
@@ -13,15 +9,11 @@ import Data.Char
 import Data.Maybe
 import Data.List
 import Text.ParserCombinators.ReadP
-import qualified Database.Persist.Base as P
 import qualified Data.Text as T
 
 refKeyTupelLen = 4
 inviteKeyTupelLen = 5
 
---
--- Tupel
---
 newtype Tupel = Tupel String
                 deriving (Eq, Data, Typeable)
 
@@ -29,45 +21,12 @@ instance Show Tupel where
   show (Tupel s) = s
 
 
-
---
--- InviteKey
---
-data InviteKey = InviteKey (Tupel, Tupel, Tupel, Tupel)
-               deriving (Eq, Data, Typeable)
-                        
-instance Show InviteKey where
-    show (InviteKey (a,b,c,d)) =
-        let ts = [show t | t <- [a,b,c,d]]
-        in intercalate "-" ts
-
-instance Read InviteKey where
-  readsPrec _ = readP_to_S inviteKeyParser
-
-instance P.PersistField InviteKey where
-  toPersistValue = P.PersistText . T.pack . show
-  fromPersistValue (P.PersistText t) = read $ T.unpack t 
-  sqlType (InviteKey _) = P.SqlString
-
---
--- RefKey
---
 data RefKey = RefKey (Tupel, Tupel, Tupel, Tupel, Tupel)
                deriving (Eq, Data, Typeable)
 
-instance Show RefKey where
-    show (RefKey (a,b,c,d,e)) =
-        let ts = [show t | t <- [a,b,c,d,e]]
-        in intercalate "-" ts
-
-instance Read RefKey where
-  readsPrec _ = readP_to_S refKeyParser
-
-instance P.PersistField RefKey where
-  toPersistValue = P.PersistText . T.pack . show
-  fromPersistValue (P.PersistText t) = read $ T.unpack t 
-  sqlType (RefKey _) = P.SqlString
-
+data InviteKey = InviteKey (Tupel, Tupel, Tupel, Tupel)
+               deriving (Eq, Data, Typeable)
+                        
 
 --
 -- Predicates
@@ -102,6 +61,7 @@ validInviteKey (InviteKey (a,b,c,d)) =
 validRefKey (RefKey (a,b,c,d,e)) = 
   validKey refKeyTupelLen [a,b,c,d,e]
 
+
 --
 -- Parser
 --
@@ -132,6 +92,26 @@ inviteKeyParser =
        t4 <- inviteTupelParser
        return $ InviteKey (Tupel t1, Tupel t2, Tupel t3, Tupel t4)
 
+--
+-- InviteKey
+--
+
+instance Show InviteKey where
+    show (InviteKey (a,b,c,d)) =
+        let ts = [show t | t <- [a,b,c,d]]
+        in intercalate "-" ts
+
+instance Read InviteKey where
+  readsPrec _ = readP_to_S inviteKeyParser
+
+
+instance Show RefKey where
+    show (RefKey (a,b,c,d,e)) =
+        let ts = [show t | t <- [a,b,c,d,e]]
+        in intercalate "-" ts
+
+instance Read RefKey where
+  readsPrec _ = readP_to_S refKeyParser
 
 --
 -- Random Tupel and Key generation
