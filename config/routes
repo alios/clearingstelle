@@ -5,3 +5,6 @@
 /robots.txt RobotsR GET
 
 / RootR GET
+
+
+/#Text/checkout CheckoutR GET POST

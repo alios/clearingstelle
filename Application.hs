@@ -22,6 +22,9 @@ import Database.Persist.GenericSql (runMigration)
 
 -- Import all relevant handler modules here.
 import Handler.Root
+import Handler.Clearingstelle
+
+dom0Title = "dom0"
 
 -- This line actually creates our YesodSite instance. It is the second half
 -- of the call to mkYesodData which occurs in Foundation.hs. Please see
@@ -50,10 +53,20 @@ withCS conf logger f = do
     dbconf <- withYamlEnvironment "config/sqlite.yml" (appEnv conf)
             $ either error return . Database.Persist.Base.loadConfig
     Database.Persist.Base.withPool (dbconf :: Settings.PersistConfig) $ \p -> do
-        Database.Persist.Base.runPool dbconf (runMigration migrateAll) p
+        Database.Persist.Base.runPool dbconf migration p
         let h = CS conf logger s p
         defaultRunner f h
-
+          where migration = do
+                  runMigration migrateAll
+                  dom0' <- selectDomain dom0Title
+                  case (dom0') of
+                    Just _ -> return ()
+                    Nothing -> do
+                      dom0id <- insert $ Domain dom0Title
+                      uid <- insert $ User "admin" (Just "admin")
+                      insert $ Role uid AdminRole dom0id
+                      return ()
+                  
 -- for yesod devel
 withDevelAppPort :: Dynamic
 withDevelAppPort = toDyn $ defaultDevelApp withCS

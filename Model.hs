@@ -25,6 +25,11 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] $(persistFile "config/mode
 
 type Database a = (MonadControlIO m) => SqlPersist m a
   
+selectDomain :: Text -> Database (Maybe DomainId)
+selectDomain dom = do
+  val <- getByValue $ Domain dom
+  return $ maybe Nothing (Just . fst) val
+
 insertKeyset :: DomainId -> Text -> Int -> UserId -> Database KeysetId
 insertKeyset dom name n uid = do
   t <- liftIO getCurrentTime
@@ -102,19 +107,20 @@ insertKeyPair :: DomainId ->
                  UTCTime -> 
                  Maybe UTCTime -> 
                  Maybe UTCTime -> 
+                 Maybe UserId ->
                  Database KeypairId
 
-insertKeyPair dom set refKey invKey creation checkout deaktivated  =
-  insert $ Keypair dom set refKey invKey creation checkout deaktivated 
+insertKeyPair dom set refKey invKey creation checkout deaktivated deactivatedBy  =
+  insert $ Keypair dom set refKey invKey creation checkout deaktivated deactivatedBy
 
 insertRandomKeyPair :: DomainId -> KeysetId -> Database KeypairId
 insertRandomKeyPair dom set = do
   (refKey, invKey) <- randomUniqueKeyPair dom
   t <- liftIO getCurrentTime
-  insertKeyPair dom set refKey invKey t Nothing Nothing
+  insertKeyPair dom set refKey invKey t Nothing Nothing Nothing
 
-deactivateKey :: ReferenceKey -> Database (Maybe (InviteKey, Bool))
-deactivateKey refKey = do
+deactivateKey :: UserId -> ReferenceKey -> Database (Maybe (InviteKey, Bool))
+deactivateKey uid refKey = do
   kp' <- selectFirst [KeypairRefKey ==. refKey] []
   case (kp') of
     Nothing -> return Nothing
@@ -124,11 +130,11 @@ deactivateKey refKey = do
       let deactive = isJust $ keypairDeactivated kp
       if (not deactive) 
         then do t <- liftIO getCurrentTime
-                update kpid [KeypairDeactivated =. (Just t)]
+                update kpid [KeypairDeactivated =. (Just t)
+                            ,KeypairDeactivatedBy =. (Just uid)]
         else return ()
       return $ Just $ (invKey, checkout)
       
-
 checkoutKey :: DomainId -> ReferenceKey -> Database (Maybe InviteKey)
 checkoutKey dom refKey = do
   k' <- getBy $ UniqueRefKey dom refKey

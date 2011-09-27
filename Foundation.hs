@@ -32,6 +32,7 @@ import Database.Persist.GenericSql
 import Settings (widgetFile)
 import Model
 import Text.Jasmine (minifym)
+import Data.Text (Text)
 import Web.ClientSession (getKey)
 import Text.Hamlet (hamletFile)
 #if PRODUCTION
