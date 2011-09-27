@@ -19,6 +19,7 @@ import Data.ByteString (ByteString)
 import Data.Dynamic (Dynamic, toDyn)
 import qualified Database.Persist.Base
 import Database.Persist.GenericSql (runMigration)
+import Control.Concurrent
 
 -- Import all relevant handler modules here.
 import Handler.Root
@@ -50,10 +51,11 @@ withCS conf logger f = do
 #else
     s <- staticDevel Settings.staticDir
 #endif
-    dbconf <- withYamlEnvironment "config/sqlite.yml" (appEnv conf)
+    dbconf <- withYamlEnvironment "config/postgresql.yml" (appEnv conf)
             $ either error return . Database.Persist.Base.loadConfig
     Database.Persist.Base.withPool (dbconf :: Settings.PersistConfig) $ \p -> do
-        Database.Persist.Base.runPool dbconf migration p
+        Database.Persist.Base.runPool dbconf migration p        
+        kfTID <- forkIO (keyFactory dbconf p)
         let h = CS conf logger s p
         defaultRunner f h
           where migration = do
@@ -70,3 +72,11 @@ withCS conf logger f = do
 -- for yesod devel
 withDevelAppPort :: Dynamic
 withDevelAppPort = toDyn $ defaultDevelApp withCS
+
+keyFactory dbconf p = do
+  cnt <- Database.Persist.Base.runPool dbconf (completeKeysets 1000) p
+  if (cnt > 0)
+    then do print $ "created " ++ show cnt ++ " new keys"
+    else do print "fnord"
+            threadDelay 1000
+  keyFactory dbconf p

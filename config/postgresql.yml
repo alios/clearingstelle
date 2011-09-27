@@ -1,0 +1,24 @@
+Default: &defaults
+  user: test
+  password: test
+  host: localhost
+  port: 5432
+  database: clearingstelle
+  poolsize: 10
+
+Development:
+  <<: *defaults
+
+Test:
+  database: test_test
+  <<: *defaults
+
+Staging:
+  database: test_staging
+  poolsize: 100
+  <<: *defaults
+
+Production:
+  database: test_production
+  poolsize: 100
+  <<: *defaults

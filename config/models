@@ -37,7 +37,6 @@ Keypair
     checkout UTCTime Maybe
     deactivated UTCTime Maybe
     deactivatedBy UserId Maybe
-    UniqueDomainKeyset domain keyset
     UniqueRefKey domain refKey
     UniqueInvKey domain invKey
     
