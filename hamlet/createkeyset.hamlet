@@ -1,0 +1,25 @@
+<div #main
+  <h1> Piratenpartei Deutschland - Clearingstelle 
+  <p
+    Willkommen bei der Clearingstelle des LiquidFeedbaack-Systems der
+    Piratenpartei Deutschland.
+            
+  <h2>Create Keyset
+  <form action="@{CreateKeysetR dom}" method="post"
+    <div id="formcontent">
+      <p
+        <label for="keysetname"
+          Name des neuen Keysets
+        <input #keysetname name="#{createKeyName}" type="text" size="24" /> 
+        <br />
+      <p
+        <label for="keysetcount"
+          Anzahl der neuen Schlüsselpaare
+        <input #keysetname name="#{createKeyCount}" type="text" size="24" /> 
+        <br />
+
+      <p
+        <label for="checkout"
+          Wenn du den untentstehenden Button drückst werden das angeforderte keyset erstellt
+        <input type="submit" name="createkeyset" id="createkeyset" value="keyset erstellen" /> 
+        <br />

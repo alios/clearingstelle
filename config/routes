@@ -8,3 +8,4 @@
 
 
 /#Text/checkout CheckoutR GET POST
+/#Text/createkeyset CreateKeysetR GET POST

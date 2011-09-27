@@ -22,9 +22,16 @@ share [mkPersist sqlSettings, mkMigrate "migrateAll"] $(persistFile "config/mode
 
 type Database a = (MonadControlIO m) => SqlPersist m a
   
+userInRole :: UserId -> RoleType -> DomainId -> Database Bool
+userInRole uid role domid = do
+  r <- selectFirst [RoleUser ==. uid,
+                    RoleType ==. role,
+                    RoleDomain ==. domid] [LimitTo 1]
+  return $ isJust r
+
 selectDomain :: Text -> Database (Maybe DomainId)
 selectDomain dom = do
-  val <- selectFirst [DomainName ==. dom] []
+  val <- selectFirst [DomainName ==. dom] [LimitTo 1]
   return $ maybe Nothing (Just . fst) val
 
 insertKeyset :: DomainId -> Text -> Int -> UserId -> Database KeysetId

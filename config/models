@@ -10,10 +10,10 @@ Email
     UniqueEmail email
 
 Role
-    roleUser UserId
-    roleType RoleType
-    roleDomain DomainId
-    UniqueRole roleUser roleType roleDomain
+    user UserId
+    type RoleType
+    domain DomainId
+    UniqueRole user type domain
 
 Domain
     name Text
