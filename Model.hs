@@ -24,7 +24,7 @@ type Database a = (MonadControlIO m) => SqlPersist m a
   
 selectDomain :: Text -> Database (Maybe DomainId)
 selectDomain dom = do
-  val <- getByValue $ Domain dom
+  val <- selectFirst [DomainName ==. dom] []
   return $ maybe Nothing (Just . fst) val
 
 insertKeyset :: DomainId -> Text -> Int -> UserId -> Database KeysetId

@@ -33,7 +33,7 @@ library
                      Settings.StaticFiles
                      Handler.Root
                      Handler.Clearingstelle
-
+                     Model.Keys
     ghc-options:   -Wall -threaded -O0
 
 executable         clearingstelle

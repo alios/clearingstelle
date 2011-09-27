@@ -16,7 +16,7 @@ Role
     UniqueRole roleUser roleType roleDomain
 
 Domain
-    domainName Text
+    name Text
 
 Keyset
     domain DomainId

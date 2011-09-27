@@ -25,6 +25,7 @@ import Yesod.Auth.OpenId
 import Yesod.Default.Config
 import Yesod.Default.Util (addStaticContentExternal)
 import Yesod.Logger (Logger, logLazyText)
+import Text.Cassius
 import qualified Settings
 import qualified Data.ByteString.Lazy as L
 import qualified Database.Persist.Base
@@ -86,7 +87,6 @@ instance Yesod CS where
 
     defaultLayout widget = do
         mmsg <- getMessage
-
         -- We break up the default layout into two components:
         -- default-layout is the contents of the body tag, and
         -- default-layout-wrapper is the entire page. Since the final
@@ -94,8 +94,9 @@ instance Yesod CS where
         -- you to use normal widget features in default-layout.
 
         pc <- widgetToPageContent $ do
-            $(widgetFile "normalize")
-            $(widgetFile "default-layout")
+          $(widgetFile "normalize")
+          $(widgetFile "default-layout")
+          $(widgetFile "clearingstelle")
         hamletToRepHtml $(hamletFile "hamlet/default-layout-wrapper.hamlet")
 
     -- This is done to provide an optimization for serving static files from

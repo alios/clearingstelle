@@ -51,19 +51,19 @@ postCheckoutR :: Text -> Handler RepHtml
 postCheckoutR dom = withDomainCheck dom $ \domid -> withCookieHandler dom $ do
     postField <- lookupPostParam checkoutRefKeyId
     case (postField) of
-      Nothing -> invalidArgs $ ["must supply a post field ", checkoutRefKeyId];
+      Nothing -> invalidArgs $ [T.concat ["must supply a post field ", checkoutRefKeyId]]
       Just refKeyText -> case (parseKey refKeyText :: Maybe ReferenceKey) of
         Nothing -> do 
-          let msg = [refKeyText, " is not a valid refkey."]
-          $(logWarn) $ T.concat msg
-          invalidArgs $ msg
+          let msg = T.concat [refKeyText, " is not a valid refkey."]
+          $(logWarn) msg
+          invalidArgs [msg]
         Just refKey -> do
           invKey' <- runDB $ checkoutKey domid refKey
           case (invKey') of
             Nothing -> do
-              let msg = ["unable to check out key ", refKeyText]         
-              $(logWarn) $ T.concat msg
-              invalidArgs msg
+              let msg = T.concat ["unable to check out key ", refKeyText]         
+              $(logWarn) msg
+              invalidArgs [msg]
             Just invKey -> do
               let invKeyText = keyText invKey
               setCookie cookieTimeout (cookieNameAscii dom) (E.encodeUtf8 invKeyText)
