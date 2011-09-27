@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, TypeFamilies, FlexibleContexts #-}
+{-# LANGUAGE MultiParamTypeClasses, TypeFamilies, FlexibleContexts, EmptyDataDecls #-}
 
 module Model.Keys (KeyC(..), LQFBInviteKey(..), LQFBReferenceKey(..)) where
 
@@ -10,7 +10,7 @@ import Data.Text (Text)
 import Data.List
 import Data.List.Split (splitEvery)
 import qualified Data.Text as T (pack, unpack, length)
-import Random (Random(..), randomIO)
+import System.Random (Random(..), randomIO)
 
 class KeyC k where
   data KeyT k :: *
@@ -52,7 +52,6 @@ lqfbParser tl tc =
 
 
 data LQFBInviteKey 
-type InviteKey = KeyT LQFBInviteKey
 instance KeyC LQFBInviteKey where
   data KeyT LQFBInviteKey = LQFBInviteKey [Char]
                             deriving (Eq, Show, Read)
@@ -68,7 +67,7 @@ instance KeyC LQFBInviteKey where
 
 
 data LQFBReferenceKey 
-type ReferenceKey = KeyT LQFBReferenceKey
+
 instance KeyC LQFBReferenceKey where
   data KeyT LQFBReferenceKey = LQFBReferenceKey [Char]
                             deriving (Eq, Show, Read)

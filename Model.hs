@@ -3,10 +3,7 @@ module Model where
 
 import Yesod
 import Database.Persist.GenericSql
-
-import Data.Enumerator (Iteratee)
 import Data.Maybe (fromJust, isJust, isNothing)
-import qualified Data.Enumerator as E (head)
 import Data.Time.Clock(getCurrentTime, UTCTime(..))
 import Data.Text (Text)
 import Model.Keys
