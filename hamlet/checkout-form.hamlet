@@ -1,0 +1,48 @@
+<div #main
+  <h1> Piratenpartei Deutschland - Clearingstelle 
+  <p
+    Willkommen bei der Clearingstelle des LiquidFeedbaack-Systems der
+    Piratenpartei Deutschland.
+      
+   <p
+    Hier kannst du dir mit dem Referenzschlüssel, den du vom Vorstand
+    erhalten hast, *genau einmal* deinen Einladungscode für LiquidFeedback
+    geben lassen. Falls du Mitglied der Piratenpartei bist und keinen 
+    Referenzschlüssel erhalten hast, wende dich bitte an den Bundesvorstand 
+    (
+    <a href="mailto:vorstand@piratenpartei.de">vorstand@piratenpartei.de
+    ).
+      
+  <h2>Einladungscode Erhalten
+  <form action="@{CheckoutR dom}" method="post"
+    <div id="formcontent">
+      <p
+        <label for="RefKey"
+          Um deinen Einladungscode zu erhalten, gib bitte den Referenzschlüssel in 
+          dieses Feld ein:
+
+        <input #RefKey name="#{checkoutRefKeyId}" type="text" size="24" /> 
+        <br />
+
+      <p
+        <label for="checkout"
+          Wenn du den untentstehenden Button drückst, erhältst du 
+          <b> einmalig 
+          deinen Einladungscode. 
+          <br /><br />
+          Beachte bitte: Der Einladungscode wird 
+          <b> NUR EINMAL 
+          angezeigt. Bitte kopiere oder notiere ihn dir sofort, um dir dann damit auf  
+          <a href="https://lqfb.piratenpartei.de/ "> https://lqfb.piratenpartei.de/ 
+          einen Account anzulegen.
+        <input type="submit" name="checkout" id="checkout" value="Einladungscode Erhalten" /> 
+        <br />
+
+  <p>
+    Falls bei diesem Vorgang etwas schiefläuft, weil dir z.B. der 
+    Einladungsschlüssel nicht angezeigt wird, du ihn verloren hast oder dein 
+    Referenzschlüssel nicht gültig oder bereits benutzt zu sein scheint, 
+    wende dich bitte ebenfalls umgehend an den Bundesvorstand  
+    (
+    <a href="mailto:vorstand@piratenpartei.de">vorstand@piratenpartei.de
+    ).
