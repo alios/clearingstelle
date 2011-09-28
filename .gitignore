@@ -1,0 +1,7 @@
+config/client_session_key.aes
+config/postgresql.yml
+dist/*
+static/tmp/*
+
+*#*#
+*.swp
