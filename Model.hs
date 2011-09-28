@@ -51,9 +51,8 @@ keysetStats set = do
   case (kset') of
     Nothing -> return Nothing
     Just kset -> do
-      let s = keysetSize kset
       ks <- selectList [KeypairKeyset ==. set] []
-      return $ Just (set, (s, length ks))
+      return $ Just (set, (keysetSize kset, length ks))
   
 selectIncompleteKeysets :: Database [KeysetId]
 selectIncompleteKeysets = do
@@ -64,24 +63,23 @@ selectIncompleteKeysets = do
     where statsFilter Nothing = False
           statsFilter (Just (_, (s, l))) = l < s
             
-completeKeyset :: KeysetId -> Int -> Database Int
-completeKeyset set n = do
+completeKeyset :: KeysetId -> Database Int
+completeKeyset set = do
   stats <- keysetStats set
   case stats of
     Nothing -> return 0
     Just (_, (s, l)) -> do
       k <- getJust set
       let dom = keysetDomain k
-      ids <- sequence $ take n $ replicate (s-l) $ insertRandomKeyPair dom set
+      ids <- sequence $ replicate (s-l) $ insertRandomKeyPair dom set
       activateKeyset set
       return $ length ids
 
-completeKeysets :: Int -> Database Int
-completeKeysets n = do
+completeKeysets :: Database Int
+completeKeysets = do
   iks <- selectIncompleteKeysets
-  case iks of
-    [] -> return 0
-    (x:_) -> do completeKeyset x n
+  r <- sequence $ map completeKeyset iks
+  return $ sum r
   
 uniqueRefKey :: DomainId -> Database ReferenceKey
 uniqueRefKey dom = do

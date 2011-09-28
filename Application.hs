@@ -74,7 +74,7 @@ withDevelAppPort :: Dynamic
 withDevelAppPort = toDyn $ defaultDevelApp withCS
 
 keyFactory dbconf p = do
-  cnt <- Database.Persist.Base.runPool dbconf (completeKeysets 1000) p
+  cnt <- Database.Persist.Base.runPool dbconf completeKeysets p
   if (cnt > 0)
     then do print $ "created " ++ show cnt ++ " new keys"
     else do threadDelay 1000000
