@@ -77,6 +77,5 @@ keyFactory dbconf p = do
   cnt <- Database.Persist.Base.runPool dbconf (completeKeysets 1000) p
   if (cnt > 0)
     then do print $ "created " ++ show cnt ++ " new keys"
-    else do print "fnord"
-            threadDelay 1000
+    else do threadDelay 1000000
   keyFactory dbconf p

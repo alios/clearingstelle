@@ -1,3 +1,6 @@
+Domain
+    name Text
+
 User
     ident Text
     password Text Maybe
@@ -14,9 +17,6 @@ Role
     type RoleType
     domain DomainId
     UniqueRole user type domain
-
-Domain
-    name Text
 
 Keyset
     domain DomainId
