@@ -15,7 +15,6 @@ module Settings
 
 import Text.Shakespeare.Text (st)
 import Language.Haskell.TH.Syntax
---import Database.Persist.Sqlite (SqliteConf)
 import Database.Persist.Postgresql (PostgresConf)
 import Yesod.Default.Config
 import qualified Yesod.Default.Util
