@@ -57,7 +57,7 @@ keysetStats set = do
   
 selectIncompleteKeysets :: Database [KeysetId]
 selectIncompleteKeysets = do
-  ksets' <- selectList [] []
+  ksets' <- selectList [KeysetImported ==. False] []
   let ksets = map fst ksets'
   stats <- sequence $ map keysetStats ksets
   return $ (map $ fst . fromJust) $ filter statsFilter stats
