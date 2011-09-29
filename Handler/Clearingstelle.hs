@@ -4,12 +4,13 @@ module Handler.Clearingstelle (getCheckoutR, postCheckoutR
                               ,getCleanupR, postCleanupR) where
 
 import Data.Text (Text)
+import Data.List (permutations)
 import Data.Maybe (isNothing, isJust, fromJust)
 import qualified Data.Text as T (pack, unpack, concat, lines, unlines)
 import qualified Data.Text.Encoding as E
 import Yesod
 import Foundation
-
+import System.Random (Random(..), randomIO)
 import Model.Keys
 
 checkoutRefKeyId :: Text
@@ -98,9 +99,9 @@ postCleanupR dom = withRole dom AdminRole $ \domid uuid -> do
       let vrefKeys = unJustList refKeys
       let irefKeys = unJustList $ zipWith (\a b -> if (isNothing a) then Just b else Nothing) refKeys vinvKeys
       defaultLayout $ do
-        let iinvKeysText = T.unlines iinvKeys 
-        let irefKeysText = T.unlines $ map keyText irefKeys
-        let refKeysText = T.unlines $ map keyText vrefKeys
+        iinvKeysText <- fmap T.unlines $ liftIO $ shuffleList iinvKeys 
+        irefKeysText <- fmap T.unlines $ liftIO $ shuffleList $ map keyText irefKeys
+        refKeysText  <- fmap T.unlines $ liftIO $ shuffleList $ map keyText vrefKeys
             
         addHamlet $ [hamlet| <h3>Failed to parse:
                              <pre>#{iinvKeysText}
@@ -115,13 +116,22 @@ postCleanupR dom = withRole dom AdminRole $ \domid uuid -> do
 unJustList l = map fromJust $ filter isJust l
       
       
-      
-      
-      
-      
-      
-      
-      
+shuffleList :: [a] -> IO [a]
+shuffleList as = do
+  ls <- shuffleList' (as, [])
+  return $ snd ls
+  
+shuffleList' :: ([a],[a]) -> IO ([a],[a])
+shuffleList' ([], bs) = return ([], bs) 
+shuffleList' (as, bs) = do
+  r <- randomIO
+  let i = r `mod` (length as)
+  let res = splitAt i as
+  let arg = case (res) of    
+        ([], (x:xs)) -> (xs, x : bs)
+        ((x:xs), []) -> (xs, x : bs)
+        (xs, y:ys) -> (ys ++ xs, y : bs)
+  shuffleList' arg
       
       
       
