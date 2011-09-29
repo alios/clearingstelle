@@ -104,9 +104,9 @@ postCleanupR dom = withRole dom AdminRole $ \domid uuid -> do
         refKeysText  <- fmap T.unlines $ liftIO $ shuffleList $ map keyText vrefKeys
             
         addHamlet $ [hamlet| <h3>Failed to parse:
-                             <pre>#{iinvKeysText}
+                             <pre style="color:orange;">#{iinvKeysText}
                              <h3>Failed to resolve:
-                             <pre>#{irefKeysText}
+                             <pre style="color:red;">#{irefKeysText}
                              <h3>Reference Keys:
                              <pre>#{refKeysText}  |]
       

@@ -55,7 +55,7 @@ withCS conf logger f = do
             $ either error return . Database.Persist.Base.loadConfig
     Database.Persist.Base.withPool (dbconf :: Settings.PersistConfig) $ \p -> do
         Database.Persist.Base.runPool dbconf migration p        
-        kfTID <- forkIO (keyFactory dbconf p)
+        kfTID <- forkOS (keyFactory dbconf p)
         let h = CS conf logger s p
         defaultRunner f h
           where migration = do
@@ -77,5 +77,6 @@ keyFactory dbconf p = do
   cnt <- Database.Persist.Base.runPool dbconf completeKeysets p
   if (cnt > 0)
     then do print $ "created " ++ show cnt ++ " new keys"
-    else do threadDelay 1000000
+            yield
+    else do threadDelay 30000000 -- sleep for 30 seconds
   keyFactory dbconf p
