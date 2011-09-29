@@ -1,0 +1,20 @@
+<div #main
+  <h1> Piratenpartei Deutschland - Clearingstelle 
+  <p
+    Willkommen bei der Clearingstelle des LiquidFeedbaack-Systems der
+    Piratenpartei Deutschland.
+            
+  <h2>Cleanup 
+  <form action="@{CleanupR dom}" method="post"
+    <div id="formcontent">
+      <p
+        <label for="keysetname"
+          Invite Keys
+        <textarea style="font-family:monospace" name="#{cleanupInviteKeyField}" cols="80" rows="25">
+        <br />
+
+      <p
+        <label for="cleanup"
+          Drücken dann RefKeys
+        <input type="submit" name="cleanup" id="cleanup" value="cleanup" /> 
+        <br />
