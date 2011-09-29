@@ -155,4 +155,14 @@ checkoutKey dom refKey = do
                 update kid [KeypairCheckout =. (Just t)]
                 return $ Just $ keypairInvKey k
                 
+  
+cleanupKeys :: DomainId -> [InviteKey] -> Database [Maybe ReferenceKey]
+cleanupKeys dom invKeys = sequence $ map (cleanupKey dom) invKeys
 
+cleanupKey :: DomainId -> InviteKey -> Database (Maybe ReferenceKey)
+cleanupKey dom invKey = do
+  key' <- getBy $ UniqueInvKey dom invKey
+  case key' of
+    Nothing -> return Nothing
+    Just (_, key) -> do
+      return $ Just $ keypairRefKey key

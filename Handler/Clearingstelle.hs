@@ -1,10 +1,11 @@
 {-# LANGUAGE TemplateHaskell, QuasiQuotes, OverloadedStrings #-}
 module Handler.Clearingstelle (getCheckoutR, postCheckoutR
-                              ,getCreateKeysetR, postCreateKeysetR) where
+                              ,getCreateKeysetR, postCreateKeysetR
+                              ,getCleanupR, postCleanupR) where
 
 import Data.Text (Text)
-import Data.Maybe (isNothing, fromJust)
-import qualified Data.Text as T (pack, unpack, concat)
+import Data.Maybe (isNothing, isJust, fromJust)
+import qualified Data.Text as T (pack, unpack, concat, lines, unlines)
 import qualified Data.Text.Encoding as E
 import Yesod
 import Foundation
@@ -16,49 +17,14 @@ checkoutRefKeyId = "refKey"
 checkoutInvKeyPrefix :: String
 checkoutInvKeyPrefix = "invKey"
 
-createKeyName :: Text 
-createKeyCount :: Text
+createKeyName, createKeyCount :: Text 
 createKeyName = "createkeyname"
 createKeyCount = "createkeycount"
 
+cleanupInviteKeyField :: Text
+cleanupInviteKeyField = "invitekeys"
+
 cookieTimeout = 60
-
-cookieName dom = T.pack $ checkoutInvKeyPrefix ++ "_" ++ (T.unpack dom)
-cookieNameAscii dom = E.encodeUtf8 $ cookieName dom
-
-withCookieHandler dom h = do
-  c <- lookupCookie $ cookieName dom
-  case c of
-    Just invKey -> checkoutWidget invKey
-    Nothing -> h
-    
-
-domainId :: Text -> Handler (Maybe DomainId)
-domainId dom = runDB $ selectDomain dom
-
-withDomainCheck :: Text -> (DomainId -> Handler a) -> Handler a
-withDomainCheck dom h = do 
-  domid' <- domainId dom
-  case (domid') of
-    Nothing -> do 
-      $(logWarn) $ T.concat ["domain ", dom, " not found"]
-      notFound
-    Just domid -> h domid
-
-withRole :: Text -> RoleType -> (DomainId -> UserId -> Handler a) -> Handler a
-withRole dom role h = withDomainCheck dom $ \domid -> do
-  (uid, u) <- requireAuth
-  inRole <- runDB $ userInRole uid role domid
-  if (not inRole)
-    then do let msg = T.concat [userIdent u, " is not allowed to call getCreateKeySet"]
-            $(logWarn) msg
-            permissionDenied msg
-    else h domid uid
-  
-
-checkoutWidget invKey = defaultLayout $ do
-      setTitle "clearingstelle - checkout"
-      $(widgetFile "checkout")
 
 getCheckoutR :: Text -> Handler RepHtml
 getCheckoutR dom = withDomainCheck dom $ \_ -> withCookieHandler dom $ defaultLayout $ do 
@@ -111,3 +77,88 @@ postCreateKeysetR dom = withRole dom AdminRole $ \domid uid -> do
                                    , (T.pack . show)countF', " for keys" ]
             defaultLayout $ addHamlet [hamlet| <h2>triggered creation of new keyset |]
 
+getCleanupR :: Text -> Handler RepHtml
+getCleanupR dom = withRole dom AdminRole $ \domid uuid -> defaultLayout $ do
+  setTitle "clearingstelle - do cleanup"
+  $(widgetFile "cleanup")
+  
+postCleanupR :: Text -> Handler RepHtml
+postCleanupR dom = withRole dom AdminRole $ \domid uuid -> do
+  invKeys <- lookupPostParam cleanupInviteKeyField
+  if (isNothing invKeys)
+    then do let msg = T.concat ["must supply post field"]
+            $(logWarn) msg
+            invalidArgs $ [msg] 
+    else do
+      let ls = T.lines $ fromJust invKeys
+      let invKeys = (map parseKey ls) :: [Maybe InviteKey]
+      let vinvKeys = unJustList invKeys
+      let iinvKeys = unJustList $ zipWith (\a b -> if (isNothing a) then Just b else Nothing) invKeys ls
+      refKeys <- runDB $ cleanupKeys domid vinvKeys
+      let vrefKeys = unJustList refKeys
+      let irefKeys = unJustList $ zipWith (\a b -> if (isNothing a) then Just b else Nothing) refKeys vinvKeys
+      defaultLayout $ do
+        let iinvKeysText = T.unlines iinvKeys 
+        let irefKeysText = T.unlines $ map keyText irefKeys
+        let refKeysText = T.unlines $ map keyText vrefKeys
+            
+        addHamlet $ [hamlet| <h3>Failed to parse:
+                             <pre>#{iinvKeysText}
+                             <h3>Failed to resolve:
+                             <pre>#{irefKeysText}
+                             <h3>Reference Keys:
+                             <pre>#{refKeysText}  |]
+      
+      
+      
+      
+unJustList l = map fromJust $ filter isJust l
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+checkoutWidget invKey = defaultLayout $ do
+      setTitle "clearingstelle - checkout"
+      $(widgetFile "checkout")
+
+
+
+domainId :: Text -> Handler (Maybe DomainId)
+domainId dom = runDB $ selectDomain dom
+
+withDomainCheck :: Text -> (DomainId -> Handler a) -> Handler a
+withDomainCheck dom h = do 
+  domid' <- domainId dom
+  case (domid') of
+    Nothing -> do 
+      $(logWarn) $ T.concat ["domain ", dom, " not found"]
+      notFound
+    Just domid -> h domid
+
+withRole :: Text -> RoleType -> (DomainId -> UserId -> Handler a) -> Handler a
+withRole dom role h = withDomainCheck dom $ \domid -> do
+  (uid, u) <- requireAuth
+  inRole <- runDB $ userInRole uid role domid
+  if (not inRole)
+    then do let msg = T.concat [userIdent u, " is not allowed to call getCreateKeySet"]
+            $(logWarn) msg
+            permissionDenied msg
+    else h domid uid
+  
+cookieName dom = T.pack $ checkoutInvKeyPrefix ++ "_" ++ (T.unpack dom)
+cookieNameAscii dom = E.encodeUtf8 $ cookieName dom
+
+withCookieHandler dom h = do
+  c <- lookupCookie $ cookieName dom
+  case c of
+    Just invKey -> checkoutWidget invKey
+    Nothing -> h
+    
