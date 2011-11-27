@@ -29,7 +29,7 @@ cookieTimeout = 60
 
 getCheckoutR :: Text -> Handler RepHtml
 getCheckoutR dom = withDomainCheck dom $ \_ -> withCookieHandler dom $ defaultLayout $ do 
-    setTitle "clearingstelle - do checkout"
+    setTitle "clearingstelle - Einladungs Schlüssel Checkout"
     $(widgetFile "checkout-form")
       
 postCheckoutR :: Text -> Handler RepHtml
@@ -42,14 +42,14 @@ postCheckoutR dom = withDomainCheck dom $ \domid -> withCookieHandler dom $ do
         invalidArgs $ [msg]
       Just refKeyText -> case (parseKey refKeyText :: Maybe ReferenceKey) of
         Nothing -> do 
-          let msg = T.concat [refKeyText, " is not a valid refkey."]
+          let msg = T.concat [refKeyText, " ist kein gültiger Schlüssel. Bitte überprüfe deine Eingabe und propier es erneut."]
           $(logWarn) msg
           invalidArgs [msg]
         Just refKey -> do
           invKey' <- runDB $ checkoutKey domid refKey
           case (invKey') of
             Nothing -> do
-              let msg = T.concat ["unable to check out key ", refKeyText]         
+              let msg = T.concat ["Der Eingegeben Key ", refKeyText, " konnte nicht aufgelöst werden. Entweder ist der Schlüssel nicht gültig, oder er wurde bereits verwendet."]         
               $(logWarn) msg
               invalidArgs [msg]
             Just invKey -> do
