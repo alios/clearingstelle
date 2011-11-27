@@ -42,7 +42,8 @@ lqfbTupelRandom n  = sequence $ replicate lqfbKeyLength $ fmap n randomIO
 
 lqfbParser tl tc = 
   let tupelParser = count tl $ oneOf validLQFBKeyChars
-  in do 
+  in do
+    spaces
     xs <- count (tc - 1) $ do 
       t <- tupelParser
       _ <- char lqfbTupelSeperator
