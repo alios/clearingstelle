@@ -11,8 +11,4 @@ import Foundation
 -- functions. You can spread them across multiple files if you are so
 -- inclined, or create a single monolithic file.
 getRootR :: Handler RepHtml
-getRootR = do
-    defaultLayout $ do
-        h2id <- lift newIdent
-        setTitle "clearingstelle homepage"
-        $(widgetFile "homepage")
+getRootR = redirect RedirectPermanent $ CheckoutR "pplqfb"
