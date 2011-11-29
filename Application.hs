@@ -64,9 +64,9 @@ withCS conf logger f = do
                   case (dom0') of
                     Just _ -> return ()
                     Nothing -> do
-                      dom0id <- insert $ Domain dom0Title
-                      uid <- insert $ User "admin" (Just "admin")
-                      insert $ Role uid AdminRole dom0id
+                      --dom0id <- insert $ Domain dom0Title
+                      --uid <- insert $ User "admin" (Just "admin")
+                      --insert $ Role uid AdminRole dom0id
                       return ()
                   
 -- for yesod devel
