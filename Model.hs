@@ -23,7 +23,6 @@ derivePersistField "InviteKey"
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] $(persistFile "config/models")
 
---type Database a = (MonadTransControl m) => SqlPersist m a
 type Database a = (MonadBaseControl IO m, Control.Monad.IO.Class.MonadIO m) => 
                   SqlPersist m a
   
@@ -127,6 +126,9 @@ insertRandomKeyPair dom set = do
   (refKey, invKey) <- randomUniqueKeyPair dom
   t <- liftIO getCurrentTime
   insertKeyPair dom set refKey invKey t Nothing Nothing Nothing
+
+deactivateKeys :: UserId -> [ReferenceKey] -> Database [Maybe (InviteKey, Bool)]
+deactivateKeys uid rks = sequence $ map (deactivateKey uid) rks
 
 deactivateKey :: UserId -> ReferenceKey -> Database (Maybe (InviteKey, Bool))
 deactivateKey uid refKey = do

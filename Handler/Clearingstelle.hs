@@ -1,7 +1,8 @@
 {-# LANGUAGE TemplateHaskell, QuasiQuotes, OverloadedStrings #-}
 module Handler.Clearingstelle (getCheckoutR, postCheckoutR
                               ,getCreateKeysetR, postCreateKeysetR
-                              ,getCleanupR, postCleanupR) where
+                              ,getCleanupR, postCleanupR
+                              ,getDeactivateR, postDeactivateR) where
 
 import Data.Text (Text)
 import Data.List (permutations)
@@ -18,6 +19,8 @@ checkoutRefKeyId :: Text
 checkoutRefKeyId = "refKey"
 checkoutInvKeyPrefix :: String
 checkoutInvKeyPrefix = "invKey"
+deactivateRefKeyField :: Text
+deactivateRefKeyField = checkoutRefKeyId
 
 createKeyName, createKeyCount :: Text 
 createKeyName = "createkeyname"
@@ -78,6 +81,47 @@ postCreateKeysetR dom = withRole dom AdminRole $ \domid uid -> do
             $(logDebug) $ T.concat ["created new keyset '", nameF', "' key count: "
                                    , (T.pack . show)countF', " for keys" ]
             defaultLayout $ addHamlet [hamlet| <h2>triggered creation of new keyset |]
+
+
+getDeactivateR :: Text -> Handler RepHtml
+getDeactivateR dom = withRole dom AdminRole $ \domid uuid -> defaultLayout $ do
+  setTitle "clearingstelle - do deactivate"
+  $(widgetFile "deactivate")
+
+
+postDeactivateR :: Text -> Handler RepHtml
+postDeactivateR dom = withRole dom AdminRole $ \domid uuid -> do
+  refKeysField <- lookupPostParam deactivateRefKeyField
+  if (isNothing refKeysField)
+    then do let msg = T.concat ["must supply post field"]
+            $(logWarn) msg
+            invalidArgs $ [msg] 
+    else do
+      let ls = T.lines $ fromJust refKeysField
+      let refKeys' = (map parseKey ls) :: [Maybe ReferenceKey]
+      let refKeys = unJustList refKeys'
+      let parseErrorRefKeys = unJustList $ zipWith (\a b -> if (isNothing a) then Just b else Nothing) refKeys' ls
+      diks <- runDB $ deactivateKeys uuid refKeys
+      let invalidRefKeys = unJustList $ zipWith (\a b -> if (isNothing a) then Just b else Nothing) diks ls
+      let validKeys = unJustList diks
+      let usedInviteKeys = map fst $ filter snd validKeys
+      let unusedInviteKeys = map fst $ filter (not.snd) validKeys
+      defaultLayout $ 
+        do parseErrorRefKeysText <- fmap T.unlines $ liftIO $ shuffleList $ parseErrorRefKeys
+           invalidRefKeysText <- fmap T.unlines $ liftIO $ shuffleList $ invalidRefKeys
+           usedInviteKeysText <- fmap T.unlines $ liftIO $ shuffleList $ map keyText usedInviteKeys
+           unusedInviteKeysText <- fmap T.unlines $ liftIO $ shuffleList $ map keyText unusedInviteKeys
+             
+           addHamlet $ [hamlet| <h3>Failed to parse:
+                                <pre style="color:yellow;">#{parseErrorRefKeysText}
+                                <h3>Unable to lookup:
+                                <pre style="color:red;">#{invalidRefKeysText}
+                                <h3>deactivated keys (unused):
+                                <pre style="color:green;">#{unusedInviteKeysText}
+                                <h3>deactivated keys (used):
+                                <pre style="color:blue;">#{usedInviteKeysText}  |]
+                
+  
 
 getCleanupR :: Text -> Handler RepHtml
 getCleanupR dom = withRole dom AdminRole $ \domid uuid -> defaultLayout $ do

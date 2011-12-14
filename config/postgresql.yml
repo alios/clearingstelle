@@ -1,7 +1,10 @@
 Default: &defaults
   database: clearingstelle
+  user: alios
+  password: 
   poolsize: 10
-
+  host: localhost
+  port: 5432
 Development:
   <<: *defaults
 
