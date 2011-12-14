@@ -1,4 +1,4 @@
-{-# LANGUAGE Rank2Types, TypeSynonymInstances, QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell, GADTs #-}
+{-# LANGUAGE Rank2Types, TypeSynonymInstances, QuasiQuotes, TypeFamilies, GeneralizedNewtypeDeriving, TemplateHaskell, GADTs, FlexibleContexts #-}
 module Model where
 
 import Yesod
@@ -7,6 +7,9 @@ import Data.Maybe (fromJust, isJust, isNothing)
 import Data.Time.Clock(getCurrentTime, UTCTime(..))
 import Data.Text (Text)
 import Model.Keys
+import Control.Monad.IO.Class
+import Yesod.Auth.HashDB (HashDBUser(..))
+import Prelude  
 
 data RoleType = AdminRole | DomainAdminRole | InvSideRole | RefSideRole 
               deriving (Show, Read, Enum, Eq)                   
@@ -20,7 +23,9 @@ derivePersistField "InviteKey"
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] $(persistFile "config/models")
 
-type Database a = (MonadControlIO m) => SqlPersist m a
+--type Database a = (MonadTransControl m) => SqlPersist m a
+type Database a = (MonadBaseControl IO m, Control.Monad.IO.Class.MonadIO m) => 
+                  SqlPersist m a
   
 userInRole :: UserId -> RoleType -> DomainId -> Database Bool
 userInRole uid role domid = do
@@ -166,3 +171,13 @@ cleanupKey dom invKey = do
     Nothing -> return Nothing
     Just (_, key) -> do
       return $ Just $ keypairRefKey key
+      
+      
+
+instance HashDBUser (UserGeneric b) where
+  userPasswordHash = userPassword
+  userPasswordSalt = userSalt
+  setSaltAndPasswordHash s h u = u { userSalt     = Just s
+                                   , userPassword = Just h
+                                   }
+

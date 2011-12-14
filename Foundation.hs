@@ -1,6 +1,5 @@
-{-# LANGUAGE QuasiQuotes, TemplateHaskell, TypeFamilies #-}
-{-# LANGUAGE OverloadedStrings, MultiParamTypeClasses #-}
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, TemplateHaskell, QuasiQuotes, OverloadedStrings, MultiParamTypeClasses, TypeFamilies #-}
+
 module Foundation
     ( CS (..)
     , CSRoute (..)
@@ -8,6 +7,7 @@ module Foundation
     , resourcesCS
     , Handler
     , Widget
+    , Form
     , maybeAuth
     , requireAuth
     , module Yesod
@@ -17,15 +17,15 @@ module Foundation
     , AuthRoute (..)
     ) where
 
-import Yesod
+import Prelude
+import Yesod hiding (Form)
 import Yesod.Static (Static, base64md5, StaticRoute(..))
 import Settings.StaticFiles
 import Yesod.Auth
-import Yesod.Auth.OpenId
+import Yesod.Auth.HashDB (getAuthIdHashDB, authHashDB)
 import Yesod.Default.Config
 import Yesod.Default.Util (addStaticContentExternal)
 import Yesod.Logger (Logger, logLazyText)
-import Text.Cassius
 import qualified Settings
 import qualified Data.ByteString.Lazy as L
 import qualified Database.Persist.Base
@@ -33,9 +33,10 @@ import Database.Persist.GenericSql
 import Settings (widgetFile)
 import Model
 import Text.Jasmine (minifym)
-import Data.Text (Text)
 import Web.ClientSession (getKey)
 import Text.Hamlet (hamletFile)
+import Data.Text (Text)
+
 #if PRODUCTION
 import Network.Mail.Mime (sendmail)
 #else
@@ -77,6 +78,8 @@ mkMessage "CS" "messages" "en"
 -- split these actions into two functions and place them in separate files.
 mkYesodData "CS" $(parseRoutesFile "config/routes")
 
+type Form x = Html -> MForm CS CS (FormResult x, Widget)
+
 -- Please see the documentation for the Yesod typeclass. There are a number
 -- of settings which can be configured by overriding methods here.
 instance Yesod CS where
@@ -87,6 +90,7 @@ instance Yesod CS where
 
     defaultLayout widget = do
         mmsg <- getMessage
+
         -- We break up the default layout into two components:
         -- default-layout is the contents of the body tag, and
         -- default-layout-wrapper is the entire page. Since the final
@@ -94,10 +98,10 @@ instance Yesod CS where
         -- you to use normal widget features in default-layout.
 
         pc <- widgetToPageContent $ do
-          $(widgetFile "normalize")
-          $(widgetFile "default-layout")
-          $(widgetFile "clearingstelle")
-        hamletToRepHtml $(hamletFile "hamlet/default-layout-wrapper.hamlet")
+            $(widgetFile "normalize")
+            $(widgetFile "default-layout")
+            $(widgetFile "clearingstelle")
+        hamletToRepHtml $(hamletFile "templates/default-layout-wrapper.hamlet")
 
     -- This is done to provide an optimization for serving static files from
     -- a separate domain. Please see the staticRoot setting in Settings.hs
@@ -126,23 +130,17 @@ instance YesodPersist CS where
     runDB f = liftIOHandler
             $ fmap connPool getYesod >>= Database.Persist.Base.runPool (undefined :: Settings.PersistConfig) f
 
+
 instance YesodAuth CS where
     type AuthId CS = UserId
 
     -- Where to send a user after successful login
     loginDest _ = RootR
+    
     -- Where to send a user after logout
     logoutDest _ = RootR
-
-    getAuthId creds = runDB $ do
-        x <- getBy $ UniqueUser $ credsIdent creds
-        case x of
-            Just (uid, _) -> return $ Just uid
-            Nothing -> do
-                fmap Just $ insert $ User (credsIdent creds) Nothing
-
-    -- You can add other plugins like BrowserID, email or OAuth here
-    authPlugins = [authOpenId]
+    getAuthId = getAuthIdHashDB AuthR (Just . UniqueUser)    
+    authPlugins = [authHashDB (Just . UniqueUser)]
 
 -- Sends off your mail. Requires sendmail in production!
 deliver :: CS -> L.ByteString -> IO ()

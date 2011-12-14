@@ -1,4 +1,5 @@
-{-# LANGUAGE CPP, QuasiQuotes, TemplateHaskell, TypeFamilies #-}
+{-# LANGUAGE CPP, TemplateHaskell, QuasiQuotes #-}
+
 module Settings.StaticFiles where
 
 import Yesod.Static (staticFiles, StaticRoute (StaticRoute))

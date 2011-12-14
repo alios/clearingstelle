@@ -5,8 +5,10 @@ module Model.Keys (KeyC(..), LQFBInviteKey(..), LQFBReferenceKey(..)) where
 import Text.Parsec
 import Text.Parsec.Char
 import Text.Parsec.Combinator
+import Data.Maybe
 
 import Data.Text (Text)
+import Prelude
 import Data.List
 import Data.List.Split (splitEvery)
 import qualified Data.Text as T (pack, unpack, length)

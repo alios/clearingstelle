@@ -1,8 +1,4 @@
 Default: &defaults
-  user: test
-  password: test
-  host: localhost
-  port: 5432
   database: clearingstelle
   poolsize: 10
 
@@ -14,11 +10,9 @@ Test:
   <<: *defaults
 
 Staging:
-  database: test_staging
   poolsize: 100
   <<: *defaults
 
 Production:
-  database: test_production
   poolsize: 100
   <<: *defaults

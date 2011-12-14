@@ -1,16 +1,16 @@
 name:              clearingstelle
-version:           3.0.3
+version:           3.1.0
 license:           BSD3
 license-file:      LICENSE
 author:            Markus Barenhoff <alios@alios.org>
 maintainer:        Markus Barenhoff <alios@alios.org>
-synopsis:          The greatest Yesod web application ever.
-description:       I'm sure you can say something clever here if you try.
+synopsis:          The clearingstelle of the pirateparty
+description:       The clearingstelle of the pirateparty
 category:          Web
 stability:         Experimental
 cabal-version:     >= 1.6
 build-type:        Simple
-homepage:          http://clearingstelle.yesodweb.com/
+homepage:          http://github.com/alios/clearingstelle
 
 Flag production
     Description:   Build the production executable.
@@ -28,13 +28,27 @@ library
 
     exposed-modules: Application
     other-modules:   Foundation
+                     Import
                      Model
+                     Model.Keys
                      Settings
                      Settings.StaticFiles
                      Handler.Root
                      Handler.Clearingstelle
-                     Model.Keys
+
     ghc-options:   -Wall -threaded -O0
+
+    extensions: TemplateHaskell
+                QuasiQuotes
+                OverloadedStrings
+                NoImplicitPrelude
+                CPP
+                OverloadedStrings
+                MultiParamTypeClasses
+                TypeFamilies
+                GADTs
+                GeneralizedNewtypeDeriving
+                FlexibleContexts
 
 executable         clearingstelle
     if flag(devel)
@@ -48,16 +62,26 @@ executable         clearingstelle
 
     main-is:       main.hs
 
+    extensions: TemplateHaskell
+                QuasiQuotes
+                OverloadedStrings
+                NoImplicitPrelude
+                CPP
+                OverloadedStrings
+                MultiParamTypeClasses
+                TypeFamilies
+                GADTs
+                GeneralizedNewtypeDeriving
+                FlexibleContexts
+
     build-depends: base                          >= 4          && < 5
-                 , time                          >= 1.2        && < 1.3
-                 , random
-                 , yesod                         >= 0.9        && < 0.9.3.2
+                 , yesod                         >= 0.9.3.4    && < 0.10
                  , yesod-core                    >= 0.9.3      && < 0.10
                  , yesod-auth                    >= 0.7.3      && < 0.8
                  , yesod-static                  >= 0.3.1      && < 0.4
-                 , yesod-default                 >= 0.3        && < 0.4
-                 , yesod-form                    >= 0.3.3      && < 0.4
-                 , mime-mail                     >= 0.3.0.3    && < 0.4
+                 , yesod-default                 >= 0.4        && < 0.5
+                 , yesod-form                    >= 0.3.4      && < 0.4
+                 , mime-mail                     >= 0.4        && < 0.5
                  , clientsession                 >= 0.7.3      && < 0.8
                  , bytestring                    >= 0.9        && < 0.10
                  , text                          >= 0.11       && < 0.12
@@ -69,6 +93,9 @@ executable         clearingstelle
                  , shakespeare-js                >= 0.10       && < 0.11
                  , shakespeare-text              >= 0.10       && < 0.11
                  , hjsmin                        >= 0.0.14     && < 0.1
+                 , monad-control                 == 0.3.*
+                 , random
+                 , split                         >= 0.1.4      && < 0.1.5
                  , parsec                        >= 3.1        && < 3.2
-                 , split
-
+                 , transformers                  >= 0.2        && < 0.3
+                 , time                          >= 1.2        && < 1.3

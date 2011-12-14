@@ -10,6 +10,7 @@ import qualified Data.Text as T (pack, unpack, concat, lines, unlines)
 import qualified Data.Text.Encoding as E
 import Yesod
 import Foundation
+import Prelude
 import System.Random (Random(..), randomIO)
 import Model.Keys
 

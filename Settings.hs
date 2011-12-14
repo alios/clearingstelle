@@ -1,6 +1,5 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE TemplateHaskell, QuasiQuotes #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE CPP, TemplateHaskell, QuasiQuotes #-}
+
 -- | Settings are centralized, as much as possible, into this file. This
 -- includes database connection settings, static file locations, etc.
 -- In addition, you can configure a number of different aspects of Yesod
@@ -13,6 +12,7 @@ module Settings
     , staticDir
     ) where
 
+import Prelude (FilePath, String)
 import Text.Shakespeare.Text (st)
 import Language.Haskell.TH.Syntax
 import Database.Persist.Postgresql (PostgresConf)
@@ -21,7 +21,6 @@ import qualified Yesod.Default.Util
 import Data.Text (Text)
 
 -- | Which Persistent backend this site is using.
---type PersistConfig = SqliteConf
 type PersistConfig = PostgresConf
 
 -- Static setting below. Changing these requires a recompile
