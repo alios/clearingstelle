@@ -10,3 +10,5 @@
 /#Text/createkeyset CreateKeysetR GET POST
 /#Text/cleanup CleanupR GET POST
 /#Text/deactivate DeactivateR GET POST
+/#Text/complete CompleteR GET
+

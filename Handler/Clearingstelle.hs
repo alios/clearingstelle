@@ -2,6 +2,7 @@
 module Handler.Clearingstelle (getCheckoutR, postCheckoutR
                               ,getCreateKeysetR, postCreateKeysetR
                               ,getCleanupR, postCleanupR
+			      ,getCompleteR
                               ,getDeactivateR, postDeactivateR) where
 
 import Data.Text (Text)
@@ -82,6 +83,11 @@ postCreateKeysetR dom = withRole dom AdminRole $ \domid uid -> do
                                    , (T.pack . show)countF', " for keys" ]
             defaultLayout $ addHamlet [hamlet| <h2>triggered creation of new keyset |]
 
+
+getCompleteR :: Text -> Handler RepHtml
+getCompleteR dom = withRole dom AdminRole $ \domid uid -> do
+	n <- runDB $ completeKeysets 
+	defaultLayout $ addHamlet [hamlet| <h2>created #{n} keypairs |]
 
 getDeactivateR :: Text -> Handler RepHtml
 getDeactivateR dom = withRole dom AdminRole $ \domid uuid -> defaultLayout $ do
