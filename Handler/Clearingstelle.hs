@@ -3,12 +3,13 @@ module Handler.Clearingstelle (getCheckoutR, postCheckoutR
                               ,getCreateKeysetR, postCreateKeysetR
                               ,getCleanupR, postCleanupR
 			      ,getCompleteR
-                              ,getDeactivateR, postDeactivateR) where
+                              ,getDeactivateR, postDeactivateR
+                              ,getMassrefkeysR, postMassrefkeysR) where
 
 import Data.Text (Text)
 import Data.List (permutations)
 import Data.Maybe (isNothing, isJust, fromJust)
-import qualified Data.Text as T (pack, unpack, concat, lines, unlines)
+import qualified Data.Text as T (pack, unpack, concat, lines, unlines, breakOn)
 import qualified Data.Text.Encoding as E
 import Yesod
 import Foundation
@@ -22,6 +23,8 @@ checkoutInvKeyPrefix :: String
 checkoutInvKeyPrefix = "invKey"
 deactivateRefKeyField :: Text
 deactivateRefKeyField = checkoutRefKeyId
+massrefkeysField :: Text
+massrefkeysField = checkoutRefKeyId
 
 createKeyName, createKeyCount :: Text 
 createKeyName = "createkeyname"
@@ -88,6 +91,44 @@ getCompleteR :: Text -> Handler RepHtml
 getCompleteR dom = withRole dom AdminRole $ \domid uid -> do
 	n <- runDB $ completeKeysets 
 	defaultLayout $ addHamlet [hamlet| <h2>created #{n} keypairs |]
+
+getMassrefkeysR :: Text -> Handler RepHtml
+getMassrefkeysR dom = withRole dom AdminRole $ \domid uid -> defaultLayout $ do
+  setTitle "clearingstelle - mass RefKey lookup"
+  $(widgetFile "massrefkeys")
+
+postMassrefkeysR :: Text -> Handler RepHtml
+postMassrefkeysR dom = withRole dom AdminRole $ \domid uid -> do
+  refKeysField <- lookupPostParam massrefkeysField
+  if (isNothing refKeysField)
+    then do let msg = T.concat ["must supply post filed"]
+            $(logWarn) msg
+            invalidArgs $ [msg]
+    else do
+      let ls = T.lines $ fromJust refKeysField
+      let ls2 = map (T.breakOn ",") ls 
+      let refKeys' = (map (\(k,r) -> (parseKey k, r)) ls2) :: [(Maybe ReferenceKey, Text)]
+      let refKeysOk = [(fromJust mk, r)  | (mk, r) <- refKeys', isJust mk]
+      (invKeys, refKeysFail) <- runDB $ lks refKeysOk
+      defaultLayout $ do
+        let ikslines = T.unlines $ map (\(ik,t) -> T.concat [keyText ik, t]) invKeys
+        let rkslines = T.unlines $ map keyText refKeysFail 
+        addHamlet $ [hamlet| <h3>resolved invite keys:
+                                <pre style="color:green;">#{ikslines}
+                             <h3>unresolved ref keys (unused):
+                                <pre style="color:red;">#{rkslines}
+        |]
+  where lks :: [(ReferenceKey, Text)] -> Database ([(InviteKey, Text)], [ReferenceKey])
+        lks [] = return ([],[])
+        lks ((rk, t):xs) = do
+          ik <- lookupRefKey rk
+          (iks, fks) <- lks xs
+          case ik of        
+            Nothing  -> return (iks, rk : fks)
+            Just ik' -> return ((ik', t) : iks, fks)
+
+
+
 
 getDeactivateR :: Text -> Handler RepHtml
 getDeactivateR dom = withRole dom AdminRole $ \domid uuid -> defaultLayout $ do

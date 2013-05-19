@@ -12,3 +12,5 @@
 /#Text/deactivate DeactivateR GET POST
 /#Text/complete CompleteR GET
 
+/#Text/massrefkeys MassrefkeysR GET POST
+

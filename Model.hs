@@ -130,6 +130,13 @@ insertRandomKeyPair dom set = do
 deactivateKeys :: UserId -> [ReferenceKey] -> Database [Maybe (InviteKey, Bool)]
 deactivateKeys uid rks = sequence $ map (deactivateKey uid) rks
 
+lookupRefKey :: ReferenceKey -> Database (Maybe InviteKey)
+lookupRefKey refKey = do
+  kp' <- selectFirst [KeypairRefKey ==. refKey] []
+  case (kp') of
+    Nothing -> return Nothing
+    Just (_, kp) -> return . Just $ keypairInvKey kp 
+
 deactivateKey :: UserId -> ReferenceKey -> Database (Maybe (InviteKey, Bool))
 deactivateKey uid refKey = do
   kp' <- selectFirst [KeypairRefKey ==. refKey] []
